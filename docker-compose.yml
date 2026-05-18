@@ -1,0 +1,70 @@
+# docker-compose.yml — ambiente de DESENVOLVIMENTO
+# Uso: docker compose up
+# Obs: usa MySQL local (belcafe.mysql.dbaas.com.br) via variáveis de ambiente
+#
+# Para desenvolvimento local com MySQL em container, veja docker-compose.prod.yml
+
+version: "3.9"
+
+services:
+
+  # ── API NestJS ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vendingmanager_api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      APP_ENV:               development
+      APP_PORT:              3000
+      FRONTEND_URL:          http://localhost:5173
+
+      DB_HOST:               ${DB_HOST}
+      DB_PORT:               ${DB_PORT:-3306}
+      DB_NAME:               ${DB_NAME}
+      DB_USER:               ${DB_USER}
+      DB_PASSWORD:           ${DB_PASSWORD}
+
+      JWT_SECRET:            ${JWT_SECRET}
+      JWT_REFRESH_SECRET:    ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN:        ${JWT_EXPIRES_IN:-8h}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+
+      MAIL_HOST:             ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT:             ${MAIL_PORT:-587}
+      MAIL_SECURE:           ${MAIL_SECURE:-false}
+      MAIL_USER:             ${MAIL_USER}
+      MAIL_PASS:             ${MAIL_PASS}
+      MAIL_FROM:             ${MAIL_FROM:-noreply@vendingmanager.com.br}
+
+      LOGIN_MAX_ATTEMPTS:    5
+      LOGIN_BLOCK_MINUTES:   15
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+    networks:
+      - vending_net
+
+  # ── Frontend React (build + serve para testes) ─────────────────────────────
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vendingmanager_web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - vending_net
+
+networks:
+  vending_net:
+    driver: bridge

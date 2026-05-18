@@ -1,0 +1,112 @@
+# ─────────────────────────────────────────────────────────────────
+#  CI — Vending Manager
+#  Roda em: push para main/develop e pull requests
+#  Jobs: lint → test → build (backend) + build (frontend)
+# ─────────────────────────────────────────────────────────────────
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+
+  # ── Backend: lint, testes e build ──────────────────────────────────────────
+  backend:
+    name: Backend (NestJS)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+        continue-on-error: true   # lint não bloqueia CI (warnings aceitos em dev)
+
+      - name: Testes unitários
+        run: npm test -- --ci --forceExit
+        env:
+          APP_ENV:            test
+          DB_HOST:            localhost
+          DB_PORT:            3306
+          DB_NAME:            test
+          DB_USER:            test
+          DB_PASSWORD:        test
+          JWT_SECRET:         ci-test-secret-32chars-minimum!!
+          JWT_REFRESH_SECRET: ci-refresh-secret-32chars-minimum
+          JWT_EXPIRES_IN:     1h
+          MAIL_HOST:          localhost
+          MAIL_PORT:          1025
+          MAIL_USER:          test
+          MAIL_PASS:          test
+          MAIL_FROM:          test@test.com
+
+      - name: Cobertura de testes
+        run: npm run test:cov -- --ci --forceExit
+        continue-on-error: true
+
+      - name: Build TypeScript
+        run: npm run build
+
+  # ── Frontend: build ─────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend (React + Vite)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build Vite
+        run: npm run build
+        env:
+          VITE_API_URL: http://localhost:3000/api/v1
+
+  # ── Docker: verifica se as imagens constroem sem erro ──────────────────────
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build imagem backend
+        run: docker build -t vendingmanager-api:ci ./backend
+
+      - name: Build imagem frontend
+        run: docker build -t vendingmanager-web:ci ./frontend

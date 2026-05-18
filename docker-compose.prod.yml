@@ -1,0 +1,99 @@
+# docker-compose.prod.yml — ambiente de PRODUÇÃO com MySQL em container
+# Uso: docker compose -f docker-compose.prod.yml up -d
+# Requer: arquivo .env.prod preenchido
+
+version: "3.9"
+
+services:
+
+  # ── MySQL 8 ────────────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: vendingmanager_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE:      ${DB_NAME}
+      MYSQL_USER:          ${DB_USER}
+      MYSQL_PASSWORD:      ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./backend/src/database/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+    networks:
+      - vending_net
+
+  # ── API NestJS ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context:    ./backend
+      dockerfile: Dockerfile
+      target:     runtime
+    container_name: vendingmanager_api
+    restart: always
+    expose:
+      - "3000"
+    environment:
+      APP_ENV:               production
+      APP_PORT:              3000
+      FRONTEND_URL:          ${FRONTEND_URL}
+
+      DB_HOST:               db
+      DB_PORT:               3306
+      DB_NAME:               ${DB_NAME}
+      DB_USER:               ${DB_USER}
+      DB_PASSWORD:           ${DB_PASSWORD}
+
+      JWT_SECRET:            ${JWT_SECRET}
+      JWT_REFRESH_SECRET:    ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN:        ${JWT_EXPIRES_IN:-8h}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+
+      MAIL_HOST:             ${MAIL_HOST}
+      MAIL_PORT:             ${MAIL_PORT:-587}
+      MAIL_SECURE:           ${MAIL_SECURE:-false}
+      MAIL_USER:             ${MAIL_USER}
+      MAIL_PASS:             ${MAIL_PASS}
+      MAIL_FROM:             ${MAIL_FROM}
+
+      LOGIN_MAX_ATTEMPTS:    5
+      LOGIN_BLOCK_MINUTES:   15
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+    networks:
+      - vending_net
+
+  # ── Frontend React + Nginx ─────────────────────────────────────────────────
+  web:
+    build:
+      context:    ./frontend
+      dockerfile: Dockerfile
+    container_name: vendingmanager_web
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - vending_net
+
+volumes:
+  db_data:
+
+networks:
+  vending_net:
+    driver: bridge
