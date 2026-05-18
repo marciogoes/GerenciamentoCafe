@@ -1,37 +1,36 @@
-# ─── Stage 1: build ───────────────────────────────────────────────────────────
+# --- ETAPA 1: Build ---
 FROM node:20-alpine AS builder
-
 WORKDIR /app
 
-# Copia manifests e instala dependências (cache layer)
+# Copia os arquivos de configuração de pacotes
 COPY package*.json ./
-RUN npm ci --omit=dev
 
-# Copia código-fonte e compila TypeScript
+# Instala TODAS as dependências (incluindo as de desenvolvimento para poder rodar o 'nest build')
+RUN npm ci
+
+# Copia o restante dos arquivos do backend
 COPY . .
+
+# Gera a pasta /dist compilada
 RUN npm run build
 
-# ─── Stage 2: runtime ─────────────────────────────────────────────────────────
-FROM node:20-alpine AS runtime
-
+# --- ETAPA 2: Produção ---
+FROM node:20-alpine AS runner
 WORKDIR /app
-
-# Apenas dependências de produção
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-
-# Copia artefato compilado
-COPY --from=builder /app/dist ./dist
-
-# Usuário sem privilégios (segurança)
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
-
-EXPOSE 3000
 
 ENV NODE_ENV=production
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/v1/health || exit 1
+# Copia apenas o package.json e o lock
+COPY package*.json ./
 
+# Instala APENAS as dependências de produção para o container final ficar leve
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copia a pasta compilada da etapa anterior
+COPY --from=builder /app/dist ./dist
+
+# Garante que a porta será lida dinamicamente do Railway
+EXPOSE 3000
+
+# Comando para rodar a aplicação em produção
 CMD ["node", "dist/main"]
