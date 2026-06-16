@@ -14,6 +14,7 @@ import KpiCard           from '../../components/dashboard/KpiCard';
 import AlertasPanel      from '../../components/dashboard/AlertasPanel';
 import FiltroPeriodo     from '../../components/dashboard/FiltroPeriodo';
 import { useAuth }       from '../../contexts/AuthContext';
+import { useTenant }     from '../../contexts/TenantContext';
 
 // ── Helpers ───────────────────────────────────────────────────
 const moeda = (v: number) =>
@@ -86,6 +87,7 @@ const TIPO_LABEL: Record<string, string> = {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { nomeTenant } = useTenant();
   const navigate = useNavigate();
   const {
     kpis, graficoReceita, graficoMaq, alertas,
@@ -101,6 +103,19 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 print:space-y-4">
+
+      {/* Cabeçalho de impressão — visível apenas no PDF */}
+      <div className="hidden print:block mb-4 border-b border-gray-300 pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-lg font-bold text-gray-900">{nomeTenant}</p>
+            <p className="text-sm text-gray-600">Dashboard — Vending Manager</p>
+          </div>
+          <p className="text-xs text-gray-500">
+            Gerado em {new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+      </div>
 
       {/* ── Cabeçalho ──────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">

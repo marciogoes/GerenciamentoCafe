@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { Loader2, Plus, Wrench, X, CheckCircle2, XCircle, PlayCircle, AlertTriangle } from 'lucide-react';
-import { manutencaoApi, getErrorMessage } from '../../services/api';
+import { manutencaoApi, machinesApi, getErrorMessage } from '../../services/api';
 import type { Manutencao, KpiManutencao } from '../../types';
 import {
   TIPO_MANUTENCAO_LABEL, SITUACAO_MANUTENCAO_LABEL, SITUACAO_MANUTENCAO_COLOR,
@@ -66,6 +66,9 @@ export default function ManutencaoPage() {
     ['manutencao', filtroSit, filtroTipo],
     () => manutencaoApi.listar({ situacao: filtroSit || undefined, tipo: filtroTipo || undefined }),
   );
+
+  // Máquinas para o seletor do chamado
+  const maquinasQ = useQuery(['maquinas-select'], () => machinesApi.listar().then(r => r.data));
 
   // Mutations
   const criarMut = useMutation(
@@ -306,12 +309,18 @@ export default function ManutencaoPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Patrimônio da Máquina *</label>
-                  <input
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Máquina *</label>
+                  <select
                     {...formNovo.register('maquina_id')}
-                    placeholder="ex: bc160-uuid"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  >
+                    <option value="">Selecione a máquina…</option>
+                    {(maquinasQ.data ?? []).map((m: any) => (
+                      <option key={m.id} value={m.id}>
+                        {m.patrimonio}{m.modelo_nome ? ` — ${m.modelo_nome}` : ''}
+                      </option>
+                    ))}
+                  </select>
                   {formNovo.formState.errors.maquina_id && (
                     <p className="text-red-500 text-xs mt-1">{formNovo.formState.errors.maquina_id.message}</p>
                   )}

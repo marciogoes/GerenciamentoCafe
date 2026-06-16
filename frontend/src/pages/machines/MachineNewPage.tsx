@@ -46,11 +46,14 @@ export default function MachineNewPage() {
   const onSubmit = async (data: FormData) => {
     try {
       const payload: Record<string, any> = { ...data };
-      if (!payload.nota_fiscal)      delete payload.nota_fiscal;
-      if (!payload.fornecedor)       delete payload.fornecedor;
-      if (!payload.localizacao_atual)delete payload.localizacao_atual;
-      if (!payload.data_registro)    delete payload.data_registro;
-      if (!payload.valor_aquisicao)  delete payload.valor_aquisicao;
+      // backend define situacao='apta' no cadastro e não aceita
+      // localizacao_atual na criação — remover para não cair em 400
+      delete payload.situacao;
+      delete payload.localizacao_atual;
+      // remove opcionais vazios/nulos
+      Object.keys(payload).forEach(
+        k => (payload[k] === '' || payload[k] == null) && delete payload[k],
+      );
 
       await criarMut.mutateAsync(payload);
       navigate('/machines');

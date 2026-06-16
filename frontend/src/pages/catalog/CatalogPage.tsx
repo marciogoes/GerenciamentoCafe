@@ -111,13 +111,11 @@ export default function CatalogPage() {
             onClick={async () => {
               try {
                 const res = await catalogExportApi.exportarCatalogo();
+                // backend retorna HTML imprimível (text/html) — abrir em nova aba (Ctrl+P → Salvar como PDF)
                 const url = URL.createObjectURL(res.data);
-                const a   = document.createElement('a');
-                a.href     = url;
-                a.download = 'catalogo-maquinas.xlsx';
-                a.click();
-                URL.revokeObjectURL(url);
-                toast.success('Catálogo exportado!');
+                window.open(url, '_blank');
+                setTimeout(() => URL.revokeObjectURL(url), 60_000);
+                toast.success('Catálogo aberto em nova aba — use Ctrl+P para salvar em PDF.');
               } catch (e) {
                 toast.error(getErrorMessage(e));
               }

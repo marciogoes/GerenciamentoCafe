@@ -43,10 +43,11 @@ export default function InvoicesPage() {
   const gerar  = useGerarLancamentos();
   const pagar  = useRegistrarPagamento();
 
-  // KPIs
-  const totalAberto  = [...lancamentosAbertos, ...lancamentosVencidos]
-    .reduce((s, l) => s + Number(l.valor), 0);
-  const totalVencido = lancamentosVencidos.reduce((s, l) => s + Number(l.valor), 0);
+  // KPIs — "vencidos" derivado por data (dias_atraso), independente do cron
+  const abertosTodos  = [...lancamentosVencidos, ...lancamentosAbertos];
+  const vencidosReais = abertosTodos.filter(l => (l.dias_atraso ?? 0) > 0);
+  const totalAberto  = abertosTodos.reduce((s, l) => s + Number(l.valor), 0);
+  const totalVencido = vencidosReais.reduce((s, l) => s + Number(l.valor), 0);
 
   function handleGerar() {
     if (!confirm(`Gerar lançamentos para ${fmtCompetencia(competencia)}?`)) return;
@@ -92,7 +93,7 @@ export default function InvoicesPage() {
         <div className="card p-4">
           <p className="text-xs text-gray-500">Vencidos</p>
           <p className="text-xl font-bold text-red-600 mt-1">{fmtBRL(totalVencido)}</p>
-          <p className="text-xs text-gray-400">{lancamentosVencidos.length} boleto(s)</p>
+          <p className="text-xs text-gray-400">{vencidosReais.length} boleto(s)</p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-gray-500">Clientes inadimplentes</p>

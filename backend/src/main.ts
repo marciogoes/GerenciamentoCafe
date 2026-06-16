@@ -3,6 +3,7 @@ import { ValidationPipe }    from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService }     from '@nestjs/config';
 import { AppModule }         from './app.module';
+import { EmptyStringToUndefinedPipe } from './common/pipes/empty-to-undefined.pipe';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { logger: ['log','warn','error'] });
@@ -28,7 +29,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // ── Validação automática dos DTOs ────────────────────────────
+  // EmptyStringToUndefinedPipe roda ANTES do ValidationPipe: troca '' por
+  // undefined para que @IsOptional() funcione em campos opcionais de data/UUID.
   app.useGlobalPipes(
+    new EmptyStringToUndefinedPipe(),
     new ValidationPipe({
       whitelist:            true,
       forbidNonWhitelisted: true,

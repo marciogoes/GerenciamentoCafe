@@ -146,6 +146,7 @@ export default function ActivitiesPage() {
   const [modalBaixa, setModalBaixa]   = useState<Execucao | null>(null);
   const [filtroTipo, setFiltroTipo]   = useState<TipoAtiv | 'todos'>('todos');
   const [filtroSit,  setFiltroSit]    = useState<Situacao | 'todos'>('todos');
+  const [modalModelos, setModalModelos] = useState(false);
   const competencia                   = mesAno + '-01';
 
   // Queries
@@ -191,6 +192,21 @@ export default function ActivitiesPage() {
     },
   );
 
+  const gerarMut = useMutation(
+    (comp: string) => activitiesApi.gerar(comp).then(r => r.data),
+    {
+      onSuccess: (res: any) => {
+        toast.success(
+          res?.geradas > 0
+            ? `${res.geradas} atividade(s) gerada(s) para o mês.`
+            : 'Checklist já estava sincronizado para este mês.',
+        );
+        invalidar();
+      },
+      onError: (e) => toast.error(getErrorMessage(e)),
+    },
+  );
+
   // Filtragem
   const filtradas = useMemo(() => {
     return (execucoes as Execucao[]).filter(e => {
@@ -231,8 +247,21 @@ export default function ActivitiesPage() {
           </p>
         </div>
 
-        {/* Navegação de mês */}
-        <div className="flex items-center gap-2">
+        {/* Ações + Navegação de mês */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setModalModelos(true)}
+            className="flex items-center gap-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm px-3 py-2 rounded-lg"
+          >
+            <Settings className="w-4 h-4" /> Configurar modelos
+          </button>
+          <button
+            onClick={() => gerarMut.mutate(competencia)}
+            disabled={gerarMut.isLoading}
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded-lg disabled:opacity-50"
+          >
+            <RotateCcw className="w-4 h-4" /> {gerarMut.isLoading ? 'Gerando…' : 'Gerar mês'}
+          </button>
           <button onClick={() => setMesAno(m => navMes(m, -1))}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <ChevronLeft className="w-4 h-4 text-gray-600" />
@@ -422,6 +451,193 @@ export default function ActivitiesPage() {
           onConfirm={(dto) => mutBaixar.mutate({ id: modalBaixa.id, dto })}
         />
       )}
+
+      {/* Modal de configuração de modelos */}
+      {modalModelos && (
+        <ModalModelos onClose={() => setModalModelos(false)} onChanged={invalidar} />
+      )}
+    </div>
+  );
+}
+
+// ── Modal de configuração de modelos de atividade ─────────────
+const TIPOS_MODELO: { value: TipoAtiv; label: string }[] = [
+  { value: 'conta_fixa',        label: 'Contas a Pagar'      },
+  { value: 'leitura_comodato',  label: 'Leituras Comodato'   },
+  { value: 'atividade_interna', label: 'Atividades Internas' },
+];
+
+interface ModeloCfg {
+  id: string;
+  tipo: TipoAtiv;
+  descricao: string;
+  dia_vencimento: number | null;
+  valor_referencia: number | null;
+  recorrente: boolean;
+  ordem: number;
+}
+
+function ModalModelos({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
+  const qc = useQueryClient();
+  const [editId, setEditId]         = useState<string | null>(null);
+  const [tipo, setTipo]             = useState<TipoAtiv>('conta_fixa');
+  const [descricao, setDescricao]   = useState('');
+  const [diaVenc, setDiaVenc]       = useState('');
+  const [valorRef, setValorRef]     = useState('');
+  const [recorrente, setRecorrente] = useState(true);
+
+  const { data: modelos = [], isLoading } = useQuery(
+    ['activity-modelos'],
+    () => activitiesApi.listarModelos().then(r => r.data),
+  );
+
+  const invalidarModelos = () => qc.invalidateQueries(['activity-modelos']);
+
+  function resetForm() {
+    setEditId(null); setTipo('conta_fixa'); setDescricao('');
+    setDiaVenc(''); setValorRef(''); setRecorrente(true);
+  }
+
+  const mutSalvar = useMutation(
+    (payload: any) =>
+      editId
+        ? activitiesApi.atualizarModelo(editId, payload)
+        : activitiesApi.criarModelo(payload),
+    {
+      onSuccess: () => {
+        toast.success(editId ? 'Modelo atualizado!' : 'Modelo cadastrado!');
+        invalidarModelos(); onChanged(); resetForm();
+      },
+      onError: (e) => toast.error(getErrorMessage(e)),
+    },
+  );
+
+  const mutExcluir = useMutation(
+    (id: string) => activitiesApi.excluirModelo(id),
+    {
+      onSuccess: () => { toast.success('Modelo removido.'); invalidarModelos(); onChanged(); },
+      onError: (e) => toast.error(getErrorMessage(e)),
+    },
+  );
+
+  function editar(m: ModeloCfg) {
+    setEditId(m.id);
+    setTipo(m.tipo);
+    setDescricao(m.descricao);
+    setDiaVenc(m.dia_vencimento != null ? String(m.dia_vencimento) : '');
+    setValorRef(m.valor_referencia != null ? String(m.valor_referencia) : '');
+    setRecorrente(!!m.recorrente);
+  }
+
+  function salvar() {
+    if (descricao.trim().length < 2) { toast.error('Informe a descrição.'); return; }
+    mutSalvar.mutate({
+      tipo,
+      descricao: descricao.trim(),
+      recorrente,
+      dia_vencimento:   diaVenc  ? Number(diaVenc)  : undefined,
+      valor_referencia: valorRef ? Number(valorRef) : undefined,
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white">
+          <div className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-bold text-gray-800">Modelos de Atividade</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+        </div>
+
+        {/* Formulário novo/editar */}
+        <div className="p-5 border-b bg-gray-50">
+          <p className="text-sm font-semibold text-gray-700 mb-3">{editId ? 'Editar modelo' : 'Novo modelo'}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+              <select value={tipo} onChange={e => setTipo(e.target.value as TipoAtiv)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                {TIPOS_MODELO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Descrição</label>
+              <input value={descricao} onChange={e => setDescricao(e.target.value)}
+                placeholder="Ex.: Aluguel do galpão"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Dia de vencimento (opcional)</label>
+              <input type="number" min={1} max={31} value={diaVenc} onChange={e => setDiaVenc(e.target.value)}
+                placeholder="1–31"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Valor de referência (opcional)</label>
+              <input type="number" step="0.01" min={0} value={valorRef} onChange={e => setValorRef(e.target.value)}
+                placeholder="0,00"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700 mt-3 cursor-pointer">
+            <input type="checkbox" checked={recorrente} onChange={e => setRecorrente(e.target.checked)}
+              className="w-4 h-4 accent-blue-600" />
+            Recorrente (entra no checklist todo mês)
+          </label>
+          <div className="flex gap-2 mt-4">
+            {editId && (
+              <button onClick={resetForm}
+                className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded-lg hover:bg-gray-100">
+                Cancelar edição
+              </button>
+            )}
+            <button onClick={salvar} disabled={mutSalvar.isLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2 rounded-lg disabled:opacity-50">
+              {mutSalvar.isLoading ? 'Salvando…' : editId ? 'Salvar alterações' : 'Adicionar modelo'}
+            </button>
+          </div>
+        </div>
+
+        {/* Lista de modelos */}
+        <div className="p-5">
+          {isLoading ? (
+            <p className="text-center text-gray-400 py-6">Carregando…</p>
+          ) : (modelos as ModeloCfg[]).length === 0 ? (
+            <p className="text-center text-gray-400 py-6">Nenhum modelo cadastrado. Adicione o primeiro acima.</p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {(modelos as ModeloCfg[]).map(m => (
+                <div key={m.id} className="flex items-center gap-3 py-2.5">
+                  <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-medium', TIPO_BADGE[m.tipo])}>
+                    {TIPO_LABEL[m.tipo]}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-800 truncate">{m.descricao}</p>
+                    <p className="text-xs text-gray-400">
+                      {m.dia_vencimento ? `Vence dia ${m.dia_vencimento}` : 'Sem vencimento fixo'}
+                      {m.valor_referencia != null ? ` · ${br(Number(m.valor_referencia))}` : ''}
+                      {!m.recorrente ? ' · não recorrente' : ''}
+                    </p>
+                  </div>
+                  <button onClick={() => editar(m)}
+                    className="text-xs text-blue-600 hover:bg-blue-50 px-2 py-1 rounded">Editar</button>
+                  <button onClick={() => { if (confirm(`Remover "${m.descricao}"?`)) mutExcluir.mutate(m.id); }}
+                    className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded">Excluir</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-5 border-t flex justify-end sticky bottom-0 bg-white">
+          <button onClick={onClose}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-5 py-2 rounded-lg">
+            Fechar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

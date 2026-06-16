@@ -25,7 +25,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken && !error.config?.url?.includes('/auth/refresh')) {
         try {
-          const { data } = await axios.post('/api/v1/auth/refresh', { refreshToken });
+          const { data } = await api.post('/auth/refresh', { refreshToken });
           localStorage.setItem('access_token', data.access_token);
           localStorage.setItem('refresh_token', data.refresh_token);
           if (error.config) {
@@ -190,6 +190,8 @@ export const settingsApi = {
 export const superAdminApi = {
   // Dashboard global
   dashboard: () => api.get('/super-admin/dashboard'),
+  // Métricas globais consumidas pelo SuperAdminPage (shape achatado)
+  metricas: () => api.get('/tenants/metricas'),
   // Tenants
   listarTenants: (params?: Record<string, string>) => api.get('/super-admin/tenants', { params }),
   detalharTenant: (id: string) => api.get(`/super-admin/tenants/${id}`),
@@ -230,6 +232,16 @@ export const reportsApi = {
       responseType: 'blob' as const,
     }),
   estoqueExcel: () => api.get('/reports/estoque/excel', { responseType: 'blob' as const }),
+};
+
+// ── Agendamento de relatórios (RF-R06 / Sprint 17) ────────────
+export const reportSchedulesApi = {
+  listar:    () => api.get('/reports/schedules'),
+  buscar:    (id: string) => api.get(`/reports/schedules/${id}`),
+  criar:     (dto: any) => api.post('/reports/schedules', dto),
+  atualizar: (id: string, dto: any) => api.patch(`/reports/schedules/${id}`, dto),
+  remover:   (id: string) => api.delete(`/reports/schedules/${id}`),
+  executar:  (id: string) => api.post(`/reports/schedules/${id}/executar`),
 };
 
 // ── Atividades Mensais (Sprint 14) ───────────────────────────

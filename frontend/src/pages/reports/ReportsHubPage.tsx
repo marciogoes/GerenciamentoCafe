@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   BarChart3, FileText, Bot, Package,
-  Download, TrendingUp, ChevronRight,
+  Download, TrendingUp, ChevronRight, CalendarClock,
 } from 'lucide-react';
 import {
   useExportarContratos,
@@ -35,6 +35,15 @@ const RELATORIOS = [
     titulo: 'Movimentação de Máquinas',
     desc:  'Saídas, retornos e máquinas sem retorno por período',
     tag:   'RF-R04',
+  },
+  {
+    to:    '/reports/agendamentos',
+    icon:  CalendarClock,
+    cor:   'bg-amber-100 text-amber-600',
+    borda: 'border-amber-200 hover:border-amber-400',
+    titulo: 'Agendamento de Relatórios',
+    desc:  'Envio automático por e-mail (diário, semanal ou mensal)',
+    tag:   'RF-R06',
   },
 ];
 

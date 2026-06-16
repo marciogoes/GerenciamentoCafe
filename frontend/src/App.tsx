@@ -34,6 +34,7 @@ import { ReportsHubPage }            from './pages/reports/ReportsHubPage';
 import { RelatorioFinanceiroPage }   from './pages/reports/RelatorioFinanceiroPage';
 import { RelatorioContratosPage }    from './pages/reports/RelatorioContratosPage';
 import { RelatorioMaquinasPage }     from './pages/reports/RelatorioMaquinasPage';
+import AgendamentosPage              from './pages/reports/AgendamentosPage';
 import UsuariosPage                  from './pages/users/UsuariosPage';
 import AceitarConvitePage            from './pages/users/AceitarConvitePage';
 import AuditoriaPage                 from './pages/audit/AuditoriaPage';
@@ -115,6 +116,7 @@ function AppRoutes() {
         <Route path="reports/financeiro" element={<RelatorioFinanceiroPage />} />
         <Route path="reports/contratos"  element={<RelatorioContratosPage />} />
         <Route path="reports/maquinas"   element={<RelatorioMaquinasPage />} />
+        <Route path="reports/agendamentos" element={<AgendamentosPage />} />
         <Route path="users"             element={<UsuariosPage />} />
         <Route path="audit"             element={<AuditoriaPage />} />
         <Route path="settings"          element={<SettingsPage />} />       {/* Sprint 11 */}
