@@ -10,8 +10,10 @@ import toast from 'react-hot-toast';
 
 const schema = z.object({
   patrimonio:       z.string().min(1, 'Patrimônio obrigatório'),
-  modelo_id:        z.string().uuid('Selecione um modelo'),
-  numero_serie:     z.string().min(1, 'Número de série obrigatório'),
+  // Alinhado ao backend (CriarMaquinaDto): modelo e nº série são OPCIONAIS.
+  // O onSubmit remove campos vazios antes de enviar; o UUID só é validado se preenchido.
+  modelo_id:        z.string().uuid('Selecione um modelo válido').optional().or(z.literal('')),
+  numero_serie:     z.string().optional(),
   nota_fiscal:      z.string().optional(),
   fornecedor:       z.string().optional(),
   valor_aquisicao:  z.coerce.number().min(0).optional(),
@@ -96,7 +98,7 @@ export default function MachineNewPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Modelo <span className="text-red-500">*</span>
+              Modelo
             </label>
             <select
               {...register('modelo_id')}
@@ -115,7 +117,7 @@ export default function MachineNewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Número de Série <span className="text-red-500">*</span>
+              Número de Série
             </label>
             <input
               {...register('numero_serie')}
