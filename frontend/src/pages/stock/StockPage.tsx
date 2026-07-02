@@ -219,7 +219,7 @@ export function StockPage() {
                       <div className="font-medium text-gray-800">{p.descricao}</div>
                       <div className="text-xs text-gray-400">{p.codigo}{p.marca ? ` · ${p.marca}` : ''}</div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 capitalize">{p.categoria.replace('_', ' ')}</td>
+                    <td className="px-4 py-3 text-gray-600 capitalize">{(p.categoria ?? '—').replace('_', ' ')}</td>
                     <td className="px-4 py-3 text-right font-mono">
                       <span className={p.situacao !== 'normal' ? 'text-red-600 font-semibold' : 'text-gray-700'}>
                         {p.saldo_atual.toFixed(3)}

@@ -4,7 +4,7 @@ import toast                             from 'react-hot-toast';
 import {
   Building2, Users, Bot, DollarSign, TrendingUp,
   Loader2, Search, ChevronDown, RefreshCw, CheckCircle2,
-  PauseCircle, XCircle, Clock, AlertTriangle,
+  PauseCircle, XCircle, Clock, AlertTriangle, Percent, X,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { superAdminApi, getErrorMessage } from '../../services/api';
@@ -50,6 +50,7 @@ export default function SuperAdminPage() {
   const qc       = useQueryClient();
   const [busca,  setBusca]  = useState('');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
+  const [descontoTenant, setDescontoTenant] = useState<any | null>(null);
 
   // Guard: só super_admin
   if (user?.perfil !== 'super_admin') {
@@ -90,6 +91,20 @@ export default function SuperAdminPage() {
       onSuccess: () => {
         toast.success('Plano atualizado!');
         qc.invalidateQueries('super-admin-tenants');
+      },
+      onError: (e) => toast.error(getErrorMessage(e)),
+    },
+  );
+
+  const mutDesconto = useMutation(
+    ({ id, dto }: { id: string; dto: any }) =>
+      superAdminApi.aplicarDesconto(id, dto),
+    {
+      onSuccess: () => {
+        toast.success('Desconto aplicado!');
+        qc.invalidateQueries('super-admin-tenants');
+        qc.invalidateQueries('super-admin-metricas');
+        setDescontoTenant(null);
       },
       onError: (e) => toast.error(getErrorMessage(e)),
     },
@@ -227,6 +242,7 @@ export default function SuperAdminPage() {
                     tenant={t}
                     onStatus={(status) => mutStatus.mutate({ id: t.id, status })}
                     onPlano={(plano)  => mutPlano.mutate({ id: t.id, plano  })}
+                    onDesconto={() => setDescontoTenant(t)}
                     loading={mutStatus.isLoading || mutPlano.isLoading}
                   />
                 ))}
@@ -243,17 +259,28 @@ export default function SuperAdminPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de desconto comercial */}
+      {descontoTenant && (
+        <DescontoModal
+          tenant={descontoTenant}
+          onClose={() => setDescontoTenant(null)}
+          onConfirm={(dto) => mutDesconto.mutate({ id: descontoTenant.id, dto })}
+          loading={mutDesconto.isLoading}
+        />
+      )}
     </div>
   );
 }
 
 // ── Linha de tenant com dropdowns ────────────────────────────
 function TenantRow({
-  tenant, onStatus, onPlano, loading,
+  tenant, onStatus, onPlano, onDesconto, loading,
 }: {
   tenant: any;
   onStatus: (s: string) => void;
   onPlano:  (p: string) => void;
+  onDesconto: () => void;
   loading:  boolean;
 }) {
   const [openStatus, setOpenStatus] = useState(false);
@@ -336,17 +363,146 @@ function TenantRow({
         {dataCriacao}
       </td>
 
-      {/* Trial badge extra */}
+      {/* Ações: desconto + trial */}
       <td className="px-4 py-3">
-        {tenant.status === 'trial' && tenant.trial_ate && (
-          <div className="flex items-center gap-1 text-xs text-amber-600">
-            <AlertTriangle className="w-3 h-3" />
-            <span>
-              {new Date(tenant.trial_ate).toLocaleDateString('pt-BR')}
+        <div className="flex items-center gap-2 flex-wrap">
+          {Number(tenant.desconto_percentual) > 0 && (
+            <span
+              className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+              title={tenant.desconto_expira_em
+                ? `Expira em ${new Date(tenant.desconto_expira_em).toLocaleDateString('pt-BR')}`
+                : 'Sem prazo de expiração'}
+            >
+              <Percent className="w-3 h-3" />
+              {Number(tenant.desconto_percentual)}% off
             </span>
-          </div>
-        )}
+          )}
+          <button
+            onClick={onDesconto}
+            disabled={loading}
+            className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-emerald-700 transition-colors"
+            title="Aplicar desconto comercial"
+          >
+            <Percent className="w-3.5 h-3.5" /> Desconto
+          </button>
+          {tenant.status === 'trial' && tenant.trial_ate && (
+            <div className="flex items-center gap-1 text-xs text-amber-600" title="Trial até">
+              <AlertTriangle className="w-3 h-3" />
+              <span>{new Date(tenant.trial_ate).toLocaleDateString('pt-BR')}</span>
+            </div>
+          )}
+        </div>
       </td>
     </tr>
+  );
+}
+
+// ── Modal de desconto comercial ──────────────────────────────
+function DescontoModal({
+  tenant, onClose, onConfirm, loading,
+}: {
+  tenant: any;
+  onClose: () => void;
+  onConfirm: (dto: { percentual: number; expira_em?: string; motivo?: string }) => void;
+  loading: boolean;
+}) {
+  const [percentual, setPercentual] = useState(
+    tenant.desconto_percentual != null ? String(tenant.desconto_percentual) : '',
+  );
+  const [expiraEm, setExpiraEm] = useState(
+    tenant.desconto_expira_em ? String(tenant.desconto_expira_em).slice(0, 10) : '',
+  );
+  const [motivo, setMotivo] = useState('');
+  const [erro, setErro]     = useState('');
+
+  function confirmar() {
+    const pct = Number(percentual);
+    if (percentual === '' || Number.isNaN(pct)) { setErro('Informe o percentual.'); return; }
+    if (pct < 0 || pct > 100) { setErro('O percentual deve estar entre 0 e 100.'); return; }
+    setErro('');
+    onConfirm({
+      percentual: pct,
+      expira_em:  expiraEm || undefined,
+      motivo:     motivo.trim() || undefined,
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <Percent className="w-5 h-5 text-emerald-600" /> Desconto Comercial
+          </h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm">
+            <span className="text-gray-500">Tenant: </span>
+            <span className="font-medium text-gray-900">{tenant.razao_social}</span>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Percentual de desconto (%)</label>
+            <input
+              type="number" min={0} max={100} step="0.5"
+              value={percentual}
+              onChange={e => setPercentual(e.target.value)}
+              placeholder="Ex.: 20"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Expira em <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <input
+              type="date"
+              value={expiraEm}
+              onChange={e => setExpiraEm(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">Deixe em branco para desconto sem prazo.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Motivo <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <input
+              type="text"
+              value={motivo}
+              onChange={e => setMotivo(e.target.value)}
+              placeholder="Ex.: Parceria comercial"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {erro && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{erro}</div>
+          )}
+        </div>
+
+        <div className="p-5 border-t border-gray-100 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={confirmar}
+            disabled={loading}
+            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-bold text-white disabled:opacity-50"
+          >
+            {loading ? 'Aplicando...' : 'Aplicar desconto'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

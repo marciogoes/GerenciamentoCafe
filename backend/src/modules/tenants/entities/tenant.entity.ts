@@ -1,5 +1,5 @@
 import {
-  Entity, PrimaryColumn, Column, CreateDateColumn,
+  Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn,
 } from 'typeorm';
 
 export type PlanoTenant  = 'starter' | 'pro' | 'enterprise';
@@ -88,4 +88,18 @@ export class Tenant {
 
   @CreateDateColumn({ name: 'criado_em' })
   criado_em: Date;
+
+  @UpdateDateColumn({ name: 'atualizado_em' })
+  atualizado_em: Date;
+
+  // ── Desconto comercial (super admin / Sprint 17) ─────────────
+  @Column({ name: 'desconto_percentual', type: 'decimal', precision: 5, scale: 2, nullable: true })
+  desconto_percentual: number | null;
+
+  @Column({ name: 'desconto_expira_em', type: 'date', nullable: true })
+  desconto_expira_em: string | null;
+
+  // ── Suspensão / aviso de exclusão (ERR-05) ────────────────
+  @Column({ name: 'dias_alerta_suspenso', type: 'int', default: 30 })
+  dias_alerta_suspenso: number;
 }

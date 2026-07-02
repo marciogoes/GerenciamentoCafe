@@ -18,8 +18,8 @@ const schema = z.object({
   cliente_id:     z.string().min(1),
   maquina_id:     z.string().optional(),
   competencia:    z.string().min(7, 'Selecione o mês'),
-  dose_inicial:   z.coerce.number().min(0),
-  dose_final:     z.coerce.number().min(0),
+  dose_inicial:   z.coerce.number().int('Use um número inteiro').min(0),
+  dose_final:     z.coerce.number().int('Use um número inteiro').min(0),
   observacao:     z.string().optional(),
 }).refine(d => d.dose_final >= d.dose_inicial, {
   message: 'Dose final não pode ser menor que dose inicial',

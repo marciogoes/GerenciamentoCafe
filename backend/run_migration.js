@@ -310,6 +310,148 @@ function skipped(label) {
   } else skipped('tenant.desconto_expira_em');
 
   // ────────────────────────────────────────────────────────────────────────────
+  console.log('\n── FIX maquina: alinhar tabela com a entidade (cadastro estava quebrado) ──');
+
+  // 1) modelo_id era NOT NULL (versao antiga). Agora e OPCIONAL no cadastro.
+  {
+    const [r] = await c.query(
+      `SELECT IS_NULLABLE FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA=? AND TABLE_NAME='maquina' AND COLUMN_NAME='modelo_id'`, [DB]);
+    if (r.length && r[0].IS_NULLABLE === 'NO') {
+      await run(c, 'MODIFY maquina.modelo_id -> NULL',
+        `ALTER TABLE maquina MODIFY COLUMN modelo_id CHAR(36) NULL COMMENT 'FK modelo_catalogo.id (opcional)'`);
+    } else skipped('maquina.modelo_id ja e nullable');
+  }
+
+  // 2) numero_serie tambem e opcional
+  {
+    const [r] = await c.query(
+      `SELECT IS_NULLABLE FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA=? AND TABLE_NAME='maquina' AND COLUMN_NAME='numero_serie'`, [DB]);
+    if (r.length && r[0].IS_NULLABLE === 'NO') {
+      await run(c, 'MODIFY maquina.numero_serie -> NULL',
+        `ALTER TABLE maquina MODIFY COLUMN numero_serie VARCHAR(50) NULL`);
+    } else skipped('maquina.numero_serie ja e nullable');
+  }
+
+  // 3) observacao (a entidade espera, o banco nao tinha)
+  if (!await colExists(c, 'maquina', 'observacao')) {
+    await run(c, 'ADD COLUMN maquina.observacao',
+      `ALTER TABLE maquina ADD COLUMN observacao TEXT NULL AFTER localizacao_atual`);
+  } else skipped('maquina.observacao');
+
+  // 4) criado_em
+  if (!await colExists(c, 'maquina', 'criado_em')) {
+    await run(c, 'ADD COLUMN maquina.criado_em',
+      `ALTER TABLE maquina ADD COLUMN criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`);
+  } else skipped('maquina.criado_em');
+
+  // 5) atualizado_em
+  if (!await colExists(c, 'maquina', 'atualizado_em')) {
+    await run(c, 'ADD COLUMN maquina.atualizado_em',
+      `ALTER TABLE maquina ADD COLUMN atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`);
+  } else skipped('maquina.atualizado_em');
+
+  // ────────────────────────────────────────────────────────────────────────────
+  console.log('\n── FIX GERAL: alinhar tabelas com as entidades (auditoria) ──');
+
+  // helper local: ADD COLUMN idempotente
+  const addColIf = async (table, col, ddl) => {
+    if (await colExists(c, table, col)) skipped(`${table}.${col}`);
+    else await run(c, `ADD ${table}.${col}`, `ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  };
+  const TS_CRIADO = `criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`;
+  const TS_ATUAL  = `atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`;
+
+  // ── cliente ──
+  await addColIf('cliente', 'criado_em', TS_CRIADO);
+  await addColIf('cliente', 'atualizado_em', TS_ATUAL);
+
+  // ── lancamento_mensal ──
+  await addColIf('lancamento_mensal', 'criado_em', TS_CRIADO);
+  await addColIf('lancamento_mensal', 'atualizado_em', TS_ATUAL);
+
+  // ── contrato ──
+  await addColIf('contrato', 'observacao', 'observacao TEXT NULL');
+  await addColIf('contrato', 'criado_em', TS_CRIADO);
+  await addColIf('contrato', 'atualizado_em', TS_ATUAL);
+  await run(c, 'MODIFY contrato.maquina_id -> NULL (deprecated/opcional)',
+    `ALTER TABLE contrato MODIFY COLUMN maquina_id CHAR(36) NULL`);
+
+  // ── movimentacao_maquina ──
+  await addColIf('movimentacao_maquina', 'ocorrencia_retorno', 'ocorrencia_retorno TEXT NULL');
+
+  // ── modelo_catalogo: bebidas_opcoes -> bebidas (rename preservando dados) ──
+  {
+    const temAntiga = await colExists(c, 'modelo_catalogo', 'bebidas_opcoes');
+    const temNova   = await colExists(c, 'modelo_catalogo', 'bebidas');
+    if (temAntiga && !temNova) {
+      await run(c, 'RENAME modelo_catalogo.bebidas_opcoes -> bebidas',
+        `ALTER TABLE modelo_catalogo CHANGE COLUMN bebidas_opcoes bebidas TEXT NULL`);
+    } else if (!temNova) {
+      await run(c, 'ADD modelo_catalogo.bebidas',
+        `ALTER TABLE modelo_catalogo ADD COLUMN bebidas TEXT NULL`);
+    } else skipped('modelo_catalogo.bebidas');
+  }
+  await addColIf('modelo_catalogo', 'criado_em', TS_CRIADO);
+  await addColIf('modelo_catalogo', 'atualizado_em', TS_ATUAL);
+
+  // ── produto: criado_em + categoria(enum legado) -> NULL ──
+  await addColIf('produto', 'criado_em', TS_CRIADO);
+  if (await colExists(c, 'produto', 'categoria')) {
+    await run(c, 'MODIFY produto.categoria -> NULL (enum legado ERR-14)',
+      `ALTER TABLE produto MODIFY COLUMN categoria ENUM('cappuccino','chocolate','cafe_graos','cafe_leite','descartavel','outros') NULL`);
+  } else skipped('produto.categoria (ja removida)');
+
+  // ── log_auditoria: colunas novas + antigas viram nullable (preserva historico) ──
+  await addColIf('log_auditoria', 'usuario_nome', `usuario_nome VARCHAR(150) NULL`);
+  await addColIf('log_auditoria', 'acao',         `acao VARCHAR(100) NOT NULL DEFAULT ''`);
+  await addColIf('log_auditoria', 'modulo',       `modulo VARCHAR(50) NOT NULL DEFAULT ''`);
+  await addColIf('log_auditoria', 'entidade_id',  `entidade_id VARCHAR(100) NULL`);
+  await addColIf('log_auditoria', 'descricao',    `descricao TEXT NULL`);
+  for (const [col, ddl] of [
+    ['tabela',      `tabela VARCHAR(60) NULL`],
+    ['registro_id', `registro_id CHAR(36) NULL`],
+    ['operacao',    `operacao ENUM('INSERT','UPDATE','DELETE') NULL`],
+  ]) {
+    if (await colExists(c, 'log_auditoria', col)) {
+      await run(c, `MODIFY log_auditoria.${col} -> NULL (legado)`,
+        `ALTER TABLE log_auditoria MODIFY COLUMN ${ddl}`);
+    } else skipped(`log_auditoria.${col} (ja nao existe)`);
+  }
+
+  // ── manutencao: tabela inteira nao existe ──
+  if (!await tableExists(c, 'manutencao')) {
+    await run(c, 'CREATE TABLE manutencao',
+      `CREATE TABLE manutencao (
+        id             CHAR(36)      NOT NULL,
+        tenant_id      CHAR(36)      NOT NULL,
+        maquina_id     CHAR(36)      NOT NULL,
+        titulo         VARCHAR(200)  NOT NULL,
+        descricao      TEXT          NULL,
+        tipo           ENUM('preventiva','corretiva','instalacao','limpeza','outros') NOT NULL DEFAULT 'corretiva',
+        situacao       ENUM('aberta','em_andamento','concluida','cancelada')          NOT NULL DEFAULT 'aberta',
+        prioridade     ENUM('baixa','media','alta','urgente')                         NOT NULL DEFAULT 'media',
+        data_abertura  DATE          NOT NULL,
+        data_inicio    DATE          NULL,
+        data_conclusao DATE          NULL,
+        tecnico        VARCHAR(150)  NULL,
+        fornecedor     VARCHAR(200)  NULL,
+        custo_pecas    DECIMAL(12,2) NOT NULL DEFAULT 0,
+        custo_mao_obra DECIMAL(12,2) NOT NULL DEFAULT 0,
+        nota_fiscal    VARCHAR(50)   NULL,
+        observacao     TEXT          NULL,
+        usuario_id     CHAR(36)      NULL,
+        criado_em      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        atualizado_em  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        INDEX idx_man_tenant   (tenant_id),
+        INDEX idx_man_maquina  (maquina_id),
+        INDEX idx_man_situacao (tenant_id, situacao)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  } else skipped('tabela manutencao');
+
+  // ────────────────────────────────────────────────────────────────────────────
   await c.end();
 
   console.log(`\n${'='.repeat(55)}`);

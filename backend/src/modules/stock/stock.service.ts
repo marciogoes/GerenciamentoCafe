@@ -191,7 +191,7 @@ export class StockService {
     const qb = this.movRepo
       .createQueryBuilder('m')
       .innerJoin('produto', 'p', 'p.id = m.produto_id AND p.tenant_id = m.tenant_id')
-      .addSelect(['p.descricao', 'p.codigo', 'p.unidade', 'p.categoria'])
+      .addSelect(['p.descricao', 'p.codigo', 'p.unidade', 'p.categoria', 'p.categoria_legado'])
       .where('m.tenant_id = :tenantId', { tenantId });
 
     if (filtros.produto_id) qb.andWhere('m.produto_id = :pid',  { pid: filtros.produto_id });
@@ -209,7 +209,7 @@ export class StockService {
       produto_desc: r.p_descricao,
       produto_cod:  r.p_codigo,
       unidade:      r.p_unidade,
-      categoria:    r.p_categoria,
+      categoria:    r.p_categoria_legado ?? r.p_categoria,
       data:         r.m_data,
       tipo:         r.m_tipo,
       quantidade:   Number(r.m_quantidade),
@@ -325,7 +325,7 @@ export class StockService {
 
     if (id) qb.andWhere('p.id = :id', { id });
 
-    qb.orderBy('p.categoria', 'ASC').addOrderBy('p.descricao', 'ASC');
+    qb.orderBy('COALESCE(p.categoria_legado, p.categoria)', 'ASC').addOrderBy('p.descricao', 'ASC');
 
     const rows = await qb.getRawMany();
 
@@ -344,7 +344,7 @@ export class StockService {
         codigo:           r.p_codigo,
         descricao:        r.p_descricao,
         marca:            r.p_marca,
-        categoria:        r.p_categoria,
+        categoria:        r.p_categoria_legado ?? r.p_categoria,
         unidade:          r.p_unidade,
         valor_unitario:   Number(r.p_valor_unitario),
         validade:         r.p_validade,
