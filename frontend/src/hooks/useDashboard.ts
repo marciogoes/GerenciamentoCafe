@@ -40,12 +40,14 @@ export function useDashboardGraficos() {
         dashboardApi.inadimplencia(),
       ]);
 
+      // O cast precisa envolver a expressao inteira: axios devolve `any`, entao
+      // aplicar `as T[]` so no [] do else deixava o resultado como `any`.
       return {
-        graficoReceita: rec.status  === 'fulfilled' ? (rec.value.data  ?? []) : [] as GraficoPonto[],
-        graficoMaq:     maq.status  === 'fulfilled' ? (maq.value.data  ?? []) : [] as GraficoPonto[],
-        distribuicao:   dist.status === 'fulfilled' ? (dist.value.data ?? []) : [] as DistribuicaoItem[],
-        topClientes:    top.status  === 'fulfilled' ? (top.value.data  ?? []) : [] as TopCliente[],
-        inadimplencia:  inad.status === 'fulfilled' ? (inad.value.data ?? []) : [] as Inadimplente[],
+        graficoReceita: (rec.status  === 'fulfilled' ? (rec.value.data  ?? []) : []) as GraficoPonto[],
+        graficoMaq:     (maq.status  === 'fulfilled' ? (maq.value.data  ?? []) : []) as GraficoPonto[],
+        distribuicao:   (dist.status === 'fulfilled' ? (dist.value.data ?? []) : []) as DistribuicaoItem[],
+        topClientes:    (top.status  === 'fulfilled' ? (top.value.data  ?? []) : []) as TopCliente[],
+        inadimplencia:  (inad.status === 'fulfilled' ? (inad.value.data ?? []) : []) as Inadimplente[],
       };
     },
     {
