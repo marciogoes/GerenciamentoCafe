@@ -34,6 +34,8 @@ export class StockService {
     const produtos = await this.produtosComSaldo(tenantId);
 
     return produtos.filter(p => {
+      // ERR-14: filtra por categoria_id (novo) ou pelo nome (compat com o filtro antigo)
+      if (filtros.categoria_id && p.categoria_id !== filtros.categoria_id) return false;
       if (filtros.categoria && p.categoria !== filtros.categoria) return false;
       if (filtros.busca) {
         const b = filtros.busca.toLowerCase();
@@ -67,8 +69,10 @@ export class StockService {
       codigo:          dto.codigo,
       descricao:       dto.descricao,
       marca:           dto.marca ?? null,
-      categoria_id:     null,          // FK dinâmica — preenchida via /stock/categorias
-      categoria_legado: dto.categoria ?? null,  // ERR-14: mapeado para campo de compatibilidade
+      // ERR-14: antes gravava sempre null aqui, entao categoria_id nunca era
+      // preenchida e a tabela categoria_insumo ficava vazia para todo mundo.
+      categoria_id:     dto.categoria_id ?? null,
+      categoria_legado: dto.categoria ?? null,   // compatibilidade com o ENUM antigo
       unidade:         dto.unidade,
       valor_unitario:  dto.valor_unitario,
       validade:        dto.validade ?? null,
@@ -320,12 +324,18 @@ export class StockService {
         'sld.produto_id = p.id',
       )
       .addSelect('COALESCE(sld.saldo, 0)', 'saldo_atual')
+      // ERR-14: traz o nome da categoria configuravel (categoria_insumo)
+      .leftJoin(
+        'categoria_insumo', 'ci',
+        'ci.id = p.categoria_id AND ci.tenant_id = p.tenant_id',
+      )
+      .addSelect('ci.nome', 'categoria_nome')
       .where('p.tenant_id = :tenantId', { tenantId })
       .andWhere('p.ativo = 1');
 
     if (id) qb.andWhere('p.id = :id', { id });
 
-    qb.orderBy('COALESCE(p.categoria_legado, p.categoria)', 'ASC').addOrderBy('p.descricao', 'ASC');
+    qb.orderBy('COALESCE(ci.nome, p.categoria_legado)', 'ASC').addOrderBy('p.descricao', 'ASC');
 
     const rows = await qb.getRawMany();
 
@@ -344,7 +354,12 @@ export class StockService {
         codigo:           r.p_codigo,
         descricao:        r.p_descricao,
         marca:            r.p_marca,
-        categoria:        r.p_categoria_legado ?? r.p_categoria,
+        // ERR-14: categoria_id/categoria_nome sao a fonte nova; `categoria`
+        // continua saindo (nome da categoria, com fallback no legado) para nao
+        // quebrar as telas que ainda leem esse campo.
+        categoria_id:     r.p_categoria_id ?? null,
+        categoria_nome:   r.categoria_nome ?? null,
+        categoria:        r.categoria_nome ?? r.p_categoria_legado ?? null,
         unidade:          r.p_unidade,
         valor_unitario:   Number(r.p_valor_unitario),
         validade:         r.p_validade,

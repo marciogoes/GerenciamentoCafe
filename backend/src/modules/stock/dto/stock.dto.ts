@@ -1,9 +1,34 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString, IsNotEmpty, IsOptional, IsEnum, IsDateString,
-  IsNumber, Min, MaxLength, IsPositive,
+  IsNumber, Min, MaxLength, IsPositive, IsUUID, IsInt, IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+// ─────────────────────────────────────────────────────────────
+//  CATEGORIA DE INSUMO — ERR-14
+// ─────────────────────────────────────────────────────────────
+
+export class CriarCategoriaDto {
+  @ApiProperty({ example: 'Snacks', description: 'Nome da categoria' })
+  @IsString() @IsNotEmpty() @MaxLength(100)
+  nome: string;
+
+  @ApiPropertyOptional({ example: 0, description: 'Ordem de exibição' })
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0)
+  ordem?: number;
+}
+
+export class AtualizarCategoriaDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100)
+  nome?: string;
+
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(0)
+  ordem?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean()
+  ativo?: boolean;
+}
 
 // ─────────────────────────────────────────────────────────────
 //  PRODUTO
@@ -22,9 +47,16 @@ export class CriarProdutoDto {
   @IsOptional() @IsString() @MaxLength(100)
   marca?: string;
 
-  @ApiProperty({ enum: ['cappuccino','chocolate','cafe_graos','cafe_leite','descartavel','outros'] })
-  @IsEnum(['cappuccino','chocolate','cafe_graos','cafe_leite','descartavel','outros'])
-  categoria: string;
+  // ERR-14: o ENUM fixo de cafe saiu daqui. A categoria agora e uma FK para
+  // categoria_insumo, configuravel por tenant — senao o SaaS so serve cafeteria.
+  @ApiPropertyOptional({ description: 'UUID da categoria (tabela categoria_insumo)' })
+  @IsOptional() @IsUUID()
+  categoria_id?: string;
+
+  /** @deprecated Campo legado. Mantido para nao quebrar clientes antigos. */
+  @ApiPropertyOptional({ deprecated: true, description: 'Categoria legada (texto livre)' })
+  @IsOptional() @IsString() @MaxLength(50)
+  categoria?: string;
 
   @ApiProperty({ example: 'KG' })
   @IsString() @IsNotEmpty() @MaxLength(10)
@@ -50,8 +82,14 @@ export class AtualizarProdutoDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100)
   marca?: string;
 
-  @ApiPropertyOptional({ enum: ['cappuccino','chocolate','cafe_graos','cafe_leite','descartavel','outros'] })
-  @IsOptional() @IsEnum(['cappuccino','chocolate','cafe_graos','cafe_leite','descartavel','outros'])
+  // ERR-14: idem CriarProdutoDto — ENUM fixo substituido por FK configuravel
+  @ApiPropertyOptional({ description: 'UUID da categoria (tabela categoria_insumo)' })
+  @IsOptional() @IsUUID()
+  categoria_id?: string;
+
+  /** @deprecated Campo legado. */
+  @ApiPropertyOptional({ deprecated: true })
+  @IsOptional() @IsString() @MaxLength(50)
   categoria?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10)
@@ -127,7 +165,13 @@ export class SaidaEstoqueDto {
 // ─────────────────────────────────────────────────────────────
 
 export class FiltrosProdutoDto {
-  @ApiPropertyOptional() @IsOptional() @IsString()
+  @ApiPropertyOptional({ description: 'UUID da categoria (ERR-14)' })
+  @IsOptional() @IsUUID()
+  categoria_id?: string;
+
+  /** @deprecated Filtro legado por nome de categoria. */
+  @ApiPropertyOptional({ deprecated: true })
+  @IsOptional() @IsString()
   categoria?: string;
 
   @ApiPropertyOptional({ enum: ['normal', 'baixo', 'zerado'] })

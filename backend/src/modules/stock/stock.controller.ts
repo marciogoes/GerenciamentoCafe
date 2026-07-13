@@ -1,15 +1,17 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query,
-  UseGuards, Req,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
+  UseGuards, Req, HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard }  from '@nestjs/passport';
 import { Roles, RolesGuard, PERFIS } from '../../common/guards/auth.guards';
-import { StockService } from './stock.service';
+import { StockService }      from './stock.service';
+import { CategoriasService } from './categorias.service';
 import {
   CriarProdutoDto, AtualizarProdutoDto,
   EntradaEstoqueDto, SaidaEstoqueDto,
   FiltrosProdutoDto, FiltrosMovimentacaoDto,
+  CriarCategoriaDto, AtualizarCategoriaDto,
 } from './dto/stock.dto';
 
 @ApiTags('Estoque')
@@ -18,7 +20,59 @@ import {
 @Controller('stock')
 export class StockController {
 
-  constructor(private stockService: StockService) {}
+  constructor(
+    private stockService: StockService,
+    private categorias:   CategoriasService,
+  ) {}
+
+  // ══════════════════════════════════════════════════════════════
+  //  CATEGORIAS DE INSUMO — ERR-14
+  // ══════════════════════════════════════════════════════════════
+
+  @Get('categories')
+  @ApiOperation({ summary: 'Listar categorias de insumo do tenant (RF-E10)' })
+  listarCategorias(@Req() req: any, @Query('incluir_inativas') incluirInativas?: string) {
+    return this.categorias.listar(req.user.tenantId, incluirInativas === 'true');
+  }
+
+  @Post('categories')
+  @UseGuards(RolesGuard)
+  @Roles(PERFIS.ADMIN, PERFIS.OPERACIONAL)
+  @ApiOperation({ summary: 'Criar categoria de insumo' })
+  criarCategoria(@Req() req: any, @Body() dto: CriarCategoriaDto) {
+    return this.categorias.criar(req.user.tenantId, dto);
+  }
+
+  @Patch('categories/:id')
+  @UseGuards(RolesGuard)
+  @Roles(PERFIS.ADMIN, PERFIS.OPERACIONAL)
+  @ApiOperation({ summary: 'Atualizar categoria' })
+  atualizarCategoria(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: AtualizarCategoriaDto,
+  ) {
+    return this.categorias.atualizar(req.user.tenantId, id, dto);
+  }
+
+  @Delete('categories/:id')
+  @UseGuards(RolesGuard)
+  @Roles(PERFIS.ADMIN)
+  @ApiOperation({ summary: 'Remover categoria (desativa se houver produtos usando)' })
+  removerCategoria(@Req() req: any, @Param('id') id: string) {
+    return this.categorias.remover(req.user.tenantId, id);
+  }
+
+  @Post('categories/importar-legado')
+  @HttpCode(200)
+  @UseGuards(RolesGuard)
+  @Roles(PERFIS.ADMIN)
+  @ApiOperation({
+    summary: 'Cria categorias a partir do ENUM legado e liga os produtos (idempotente)',
+  })
+  importarCategoriasLegado(@Req() req: any) {
+    return this.categorias.importarLegado(req.user.tenantId);
+  }
 
   // ── GET /stock/products ───────────────────────────────────────
   @Get('products')
