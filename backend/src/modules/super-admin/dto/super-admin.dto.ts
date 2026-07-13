@@ -10,6 +10,34 @@ export class AlterarStatusTenantDto {
   status: 'ativo' | 'suspenso' | 'cancelado';
 }
 
+// ── ERR-24: assinatura do SaaS, cobranca manual ────────────────
+
+export class CriarAssinaturaDto {
+  @ApiPropertyOptional({ example: '2026-07-01', description: 'Padrão: hoje' })
+  @IsOptional() @IsDateString()
+  data_inicio?: string;
+}
+
+export class GerarCobrancaDto {
+  @ApiPropertyOptional({ example: '2026-07', description: 'Competência. Padrão: mês atual' })
+  @IsOptional() @IsDateString()
+  competencia?: string;
+}
+
+export class RegistrarPagamentoAssinaturaDto {
+  @ApiPropertyOptional({ example: '2026-07-10', description: 'Padrão: hoje' })
+  @IsOptional() @IsDateString()
+  data_pagamento?: string;
+
+  @ApiPropertyOptional({ enum: ['pix', 'boleto', 'transferencia', 'dinheiro'] })
+  @IsOptional() @IsEnum(['pix', 'boleto', 'transferencia', 'dinheiro'])
+  forma_pagamento?: string;
+
+  @ApiPropertyOptional({ example: 'Pago via PIX, comprovante no e-mail' })
+  @IsOptional() @IsString()
+  observacao?: string;
+}
+
 export class AlterarPlanoTenantDto {
   @ApiProperty({ enum: ['starter', 'pro', 'enterprise'] })
   @IsEnum(['starter', 'pro', 'enterprise'])

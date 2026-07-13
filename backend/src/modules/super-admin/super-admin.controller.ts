@@ -9,6 +9,7 @@ import {
 
 import { JwtAuthGuard, RolesGuard, Roles, CurrentUser, PERFIS } from '../../common/guards/auth.guards';
 import { SuperAdminService }  from './super-admin.service';
+import { AssinaturasService } from '../tenants/assinaturas.service';
 import {
   AlterarStatusTenantDto,
   AlterarPlanoTenantDto,
@@ -16,6 +17,9 @@ import {
   AplicarDescontoDto,
   ImpersonateDto,
   FiltrosTenantDto,
+  CriarAssinaturaDto,
+  GerarCobrancaDto,
+  RegistrarPagamentoAssinaturaDto,
 } from './dto/super-admin.dto';
 
 @ApiTags('Super Admin')
@@ -25,7 +29,10 @@ import {
 @ApiBearerAuth()
 export class SuperAdminController {
 
-  constructor(private readonly svc: SuperAdminService) {}
+  constructor(
+    private readonly svc:         SuperAdminService,
+    private readonly assinaturas: AssinaturasService,
+  ) {}
 
   // ── Dashboard global ──────────────────────────────────────────
 
@@ -34,6 +41,60 @@ export class SuperAdminController {
   @ApiResponse({ status: 200, description: 'Métricas globais + crescimento + recentes' })
   dashboard() {
     return this.svc.dashboard();
+  }
+
+  // ── Assinaturas do SaaS — ERR-24 (cobrança manual) ────────────
+
+  @Get('assinaturas/em-aberto')
+  @ApiOperation({ summary: '[Super Admin] Cobranças vencidas e não pagas (todos os tenants)' })
+  cobrancasEmAberto() {
+    return this.assinaturas.emAberto();
+  }
+
+  @Post('assinaturas/atualizar-inadimplencia')
+  @HttpCode(200)
+  @ApiOperation({ summary: '[Super Admin] Reavalia inadimplência (também roda no cron diário)' })
+  atualizarInadimplencia() {
+    return this.assinaturas.atualizarInadimplencia();
+  }
+
+  @Get('tenants/:id/assinatura')
+  @ApiOperation({ summary: '[Super Admin] Assinatura e histórico de cobranças do tenant' })
+  @ApiParam({ name: 'id', description: 'UUID do tenant' })
+  resumoAssinatura(@Param('id') id: string) {
+    return this.assinaturas.resumo(id);
+  }
+
+  @Post('tenants/:id/assinatura')
+  @ApiOperation({ summary: '[Super Admin] Criar assinatura do tenant (gateway manual)' })
+  @ApiParam({ name: 'id', description: 'UUID do tenant' })
+  criarAssinatura(@Param('id') id: string, @Body() dto: CriarAssinaturaDto) {
+    return this.assinaturas.criar(id, dto);
+  }
+
+  @Post('tenants/:id/assinatura/cobrancas')
+  @ApiOperation({ summary: '[Super Admin] Gerar cobrança do mês (idempotente)' })
+  @ApiParam({ name: 'id', description: 'UUID do tenant' })
+  gerarCobranca(@Param('id') id: string, @Body() dto: GerarCobrancaDto) {
+    return this.assinaturas.gerarCobranca(id, dto.competencia);
+  }
+
+  @Patch('assinaturas/cobrancas/:cobrancaId/pagar')
+  @ApiOperation({ summary: '[Super Admin] Dar baixa no pagamento de uma cobrança' })
+  @ApiParam({ name: 'cobrancaId', description: 'UUID da cobrança' })
+  pagarCobranca(
+    @Param('cobrancaId') cobrancaId: string,
+    @Body() dto: RegistrarPagamentoAssinaturaDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.assinaturas.registrarPagamento(cobrancaId, dto, user?.userId);
+  }
+
+  @Patch('tenants/:id/assinatura/cancelar')
+  @ApiOperation({ summary: '[Super Admin] Cancelar assinatura do tenant' })
+  @ApiParam({ name: 'id', description: 'UUID do tenant' })
+  cancelarAssinatura(@Param('id') id: string) {
+    return this.assinaturas.cancelar(id);
   }
 
   // ── Planos ────────────────────────────────────────────────────

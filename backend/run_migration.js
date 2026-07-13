@@ -452,6 +452,35 @@ function skipped(label) {
   } else skipped('tabela manutencao');
 
   // ────────────────────────────────────────────────────────────────────────────
+  // ERR-24: historico de pagamentos da assinatura do tenant ao SaaS.
+  // A tabela assinatura_tenant guarda a assinatura VIGENTE (plano, valor,
+  // proximo vencimento). Ela nao guarda quais meses ja foram pagos — sem isso
+  // nao da para cobrar manualmente nem saber quem esta devendo.
+  // ────────────────────────────────────────────────────────────────────────────
+  if (!await tableExists(c, 'pagamento_assinatura')) {
+    await run(c, 'tabela pagamento_assinatura (ERR-24)', `
+      CREATE TABLE pagamento_assinatura (
+        id              CHAR(36)      NOT NULL,
+        tenant_id       CHAR(36)      NOT NULL,
+        assinatura_id   CHAR(36)      NOT NULL,
+        competencia     DATE          NOT NULL COMMENT 'Mes de referencia, sempre dia 01',
+        valor           DECIMAL(12,2) NOT NULL,
+        data_vencimento DATE          NOT NULL,
+        data_pagamento  DATE          NULL     COMMENT 'NULL = ainda nao pago',
+        forma_pagamento VARCHAR(30)   NULL     COMMENT 'pix, boleto, transferencia, dinheiro',
+        observacao      VARCHAR(500)  NULL,
+        registrado_por  CHAR(36)      NULL     COMMENT 'usuario super admin que baixou o pagamento',
+        criado_em       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        atualizado_em   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_pag_competencia (tenant_id, competencia),
+        INDEX idx_pag_tenant     (tenant_id),
+        INDEX idx_pag_em_aberto  (data_pagamento, data_vencimento)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      COMMENT='ERR-24: cobranca do SaaS ao tenant (nao confundir com lancamento_mensal, que e o tenant cobrando os clientes dele)'`);
+  } else skipped('tabela pagamento_assinatura');
+
+  // ────────────────────────────────────────────────────────────────────────────
   await c.end();
 
   console.log(`\n${'='.repeat(55)}`);
