@@ -115,7 +115,7 @@ export default function GastosPage() {
       qc.invalidateQueries({ queryKey: ['gastos-evolucao'] });
       fecharForm();
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro'); },
   });
 
   const mutAtualizar = useMutation({
@@ -126,7 +126,7 @@ export default function GastosPage() {
       qc.invalidateQueries({ queryKey: ['gastos-kpi'] });
       fecharForm();
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro'); },
   });
 
   const mutPagar = useMutation({
@@ -137,7 +137,7 @@ export default function GastosPage() {
       qc.invalidateQueries({ queryKey: ['gastos-kpi'] });
       setPagarId(null);
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro'); },
   });
 
   const mutCancelar = useMutation({
@@ -147,7 +147,7 @@ export default function GastosPage() {
       qc.invalidateQueries({ queryKey: ['gastos'] });
       qc.invalidateQueries({ queryKey: ['gastos-kpi'] });
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro'); },
   });
 
   const mutExcluir = useMutation({
@@ -157,7 +157,7 @@ export default function GastosPage() {
       qc.invalidateQueries({ queryKey: ['gastos'] });
       qc.invalidateQueries({ queryKey: ['gastos-kpi'] });
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro'); },
   });
 
   const mutDuplicar = useMutation({
@@ -171,7 +171,7 @@ export default function GastosPage() {
         toast('Nenhum gasto recorrente do mês anterior para copiar.', { icon: 'ℹ️' });
       }
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro'); },
   });
 
   // Form
@@ -235,7 +235,7 @@ export default function GastosPage() {
         <div className="flex gap-2">
           <button
             onClick={() => mutDuplicar.mutate(mes + '-01')}
-            disabled={mutDuplicar.isPending}
+            disabled={mutDuplicar.isLoading}
             className="flex items-center gap-2 border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             title="Copia gastos recorrentes do mês anterior"
           >
@@ -479,7 +479,7 @@ export default function GastosPage() {
                   Cancelar
                 </button>
                 <button type="submit"
-                  disabled={mutCriar.isPending || mutAtualizar.isPending}
+                  disabled={mutCriar.isLoading || mutAtualizar.isLoading}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                   {editando ? 'Salvar Alterações' : 'Registrar Gasto'}
                 </button>
@@ -510,7 +510,7 @@ export default function GastosPage() {
                     if (!pagarData) { toast.error('Informe a data de pagamento'); return; }
                     mutPagar.mutate({ id: pagarId, dto: { data_pagamento: pagarData } });
                   }}
-                  disabled={mutPagar.isPending}
+                  disabled={mutPagar.isLoading}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                   Confirmar Pagamento
                 </button>

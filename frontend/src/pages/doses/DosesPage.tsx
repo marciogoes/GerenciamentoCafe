@@ -80,7 +80,7 @@ export default function DosesPage() {
       qc.invalidateQueries({ queryKey: ['doses-pendente-envio'] });
       setShowForm(false); reset();
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro ao registrar leitura'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro ao registrar leitura'); },
   });
 
   const mutAtualizar = useMutation({
@@ -90,7 +90,7 @@ export default function DosesPage() {
       qc.invalidateQueries({ queryKey: ['doses'] });
       setEditando(null); reset();
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro ao atualizar'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro ao atualizar'); },
   });
 
   const mutEnviar = useMutation({
@@ -101,7 +101,7 @@ export default function DosesPage() {
       qc.invalidateQueries({ queryKey: ['doses'] });
       qc.invalidateQueries({ queryKey: ['doses-pendente-envio'] });
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro'); },
   });
 
   const mutExcluir = useMutation({
@@ -110,7 +110,7 @@ export default function DosesPage() {
       toast.success('Leitura excluída.');
       qc.invalidateQueries({ queryKey: ['doses'] });
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Erro ao excluir'),
+    onError: (e: any) => { toast.error(e.response?.data?.message ?? 'Erro ao excluir'); },
   });
 
   // Form
@@ -371,7 +371,7 @@ export default function DosesPage() {
                   Cancelar
                 </button>
                 <button type="submit"
-                  disabled={mutCriar.isPending || mutAtualizar.isPending}
+                  disabled={mutCriar.isLoading || mutAtualizar.isLoading}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                   {editando ? 'Salvar Alterações' : 'Registrar Leitura'}
                 </button>
@@ -443,7 +443,7 @@ export default function DosesPage() {
                           </button>
                           <button
                             onClick={() => handleEnviar(l)}
-                            disabled={mutEnviar.isPending}
+                            disabled={mutEnviar.isLoading}
                             className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
                             title="Marcar como enviada ao contratante"
                           >
