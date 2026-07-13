@@ -4,12 +4,13 @@ import toast                             from 'react-hot-toast';
 import {
   Building2, Users, Bot, DollarSign, TrendingUp,
   Loader2, Search, ChevronDown, RefreshCw, CheckCircle2,
-  PauseCircle, XCircle, Clock, AlertTriangle, Percent, X,
+  PauseCircle, XCircle, Clock, AlertTriangle, Percent, X, CreditCard,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { superAdminApi, getErrorMessage } from '../../services/api';
 import { useAuth }                        from '../../contexts/AuthContext';
 import { Navigate }                       from 'react-router-dom';
+import { AssinaturaTenant }               from '../../components/super-admin/AssinaturaTenant';
 
 // ── Helpers ───────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; cor: string; icon: any }> = {
@@ -51,6 +52,7 @@ export default function SuperAdminPage() {
   const [busca,  setBusca]  = useState('');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [descontoTenant, setDescontoTenant] = useState<any | null>(null);
+  const [assinaturaTenant, setAssinaturaTenant] = useState<any | null>(null);   // ERR-24
 
   // Guard: só super_admin
   if (user?.perfil !== 'super_admin') {
@@ -243,6 +245,7 @@ export default function SuperAdminPage() {
                     onStatus={(status) => mutStatus.mutate({ id: t.id, status })}
                     onPlano={(plano)  => mutPlano.mutate({ id: t.id, plano  })}
                     onDesconto={() => setDescontoTenant(t)}
+                    onAssinatura={() => setAssinaturaTenant(t)}
                     loading={mutStatus.isLoading || mutPlano.isLoading}
                   />
                 ))}
@@ -269,18 +272,39 @@ export default function SuperAdminPage() {
           loading={mutDesconto.isLoading}
         />
       )}
+
+      {/* ERR-24: assinatura do SaaS (cobrança manual) */}
+      {assinaturaTenant && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-10">
+          <div className="w-full max-w-3xl mx-4">
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => setAssinaturaTenant(null)}
+                className="text-white/80 hover:text-white text-sm"
+              >
+                Fechar ×
+              </button>
+            </div>
+            <AssinaturaTenant
+              tenantId={assinaturaTenant.id}
+              tenantNome={assinaturaTenant.razao_social}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Linha de tenant com dropdowns ────────────────────────────
 function TenantRow({
-  tenant, onStatus, onPlano, onDesconto, loading,
+  tenant, onStatus, onPlano, onDesconto, onAssinatura, loading,
 }: {
   tenant: any;
   onStatus: (s: string) => void;
   onPlano:  (p: string) => void;
   onDesconto: () => void;
+  onAssinatura: () => void;
   loading:  boolean;
 }) {
   const [openStatus, setOpenStatus] = useState(false);
@@ -384,6 +408,15 @@ function TenantRow({
             title="Aplicar desconto comercial"
           >
             <Percent className="w-3.5 h-3.5" /> Desconto
+          </button>
+          {/* ERR-24: cobrança do SaaS a este tenant */}
+          <button
+            onClick={onAssinatura}
+            disabled={loading}
+            className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-blue-700 transition-colors"
+            title="Assinatura e cobranças do SaaS"
+          >
+            <CreditCard className="w-3.5 h-3.5" /> Assinatura
           </button>
           {tenant.status === 'trial' && tenant.trial_ate && (
             <div className="flex items-center gap-1 text-xs text-amber-600" title="Trial até">

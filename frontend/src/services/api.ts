@@ -217,6 +217,18 @@ export const superAdminApi = {
     api.post(`/super-admin/impersonate/${tenantId}`, { motivo }),
   historicoImpersonations: (limite?: number) =>
     api.get('/super-admin/impersonations', { params: { limite } }),
+
+  // ERR-24: assinatura do SaaS (cobranca manual)
+  assinatura:        (tenantId: string) => api.get(`/super-admin/tenants/${tenantId}/assinatura`),
+  criarAssinatura:   (tenantId: string, dto: any = {}) =>
+    api.post(`/super-admin/tenants/${tenantId}/assinatura`, dto),
+  gerarCobranca:     (tenantId: string, dto: any = {}) =>
+    api.post(`/super-admin/tenants/${tenantId}/assinatura/cobrancas`, dto),
+  pagarCobranca:     (cobrancaId: string, dto: any) =>
+    api.patch(`/super-admin/assinaturas/cobrancas/${cobrancaId}/pagar`, dto),
+  cancelarAssinatura: (tenantId: string) =>
+    api.patch(`/super-admin/tenants/${tenantId}/assinatura/cancelar`),
+  cobrancasEmAberto: () => api.get('/super-admin/assinaturas/em-aberto'),
 };
 
 // ── Relatórios (Sprint 8) ────────────────────────────────────
