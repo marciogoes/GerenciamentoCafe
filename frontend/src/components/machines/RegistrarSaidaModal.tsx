@@ -3,15 +3,21 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Maquina } from '../../types';
+import { TIPO_CONTRATO_LABEL } from '../../types';
 import { useRegistrarSaida } from '../../hooks/useMachines';
+import { useContratos } from '../../hooks/useContracts';
 import { getErrorMessage } from '../../services/api';
 
+// ERR-11: contrato_os foi dividido em contrato_id (UUID) + os_referencia (texto livre).
+// O DTO do backend usa forbidNonWhitelisted, entao enviar contrato_os retorna 400.
 const schema = z.object({
-  data_saida:  z.string().min(1, 'Data obrigatória'),
-  hora_saida:  z.string().optional(),
-  local:       z.string().optional(),
-  contrato_os: z.string().optional(),
-  ocorrencia:  z.string().optional(),
+  data_saida:    z.string().min(1, 'Data obrigatória'),
+  hora_saida:    z.string().optional(),
+  tipo_saida:    z.enum(['locacao', 'comodato', 'evento']),
+  local:         z.string().optional(),
+  contrato_id:   z.string().uuid('Contrato inválido').optional().or(z.literal('')),
+  os_referencia: z.string().max(50, 'Máximo 50 caracteres').optional(),
+  ocorrencia:    z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -26,6 +32,9 @@ export function RegistrarSaidaModal({ maquina, onClose, onSuccess }: Props) {
   const [erro, setErro] = useState('');
   const mutation        = useRegistrarSaida();
 
+  // Contratos ativos, para vincular a saida a um contrato interno (opcional)
+  const { data: contratos } = useContratos({ situacao: 'ativo' });
+
   const {
     register, handleSubmit,
     formState: { errors, isSubmitting },
@@ -34,13 +43,19 @@ export function RegistrarSaidaModal({ maquina, onClose, onSuccess }: Props) {
     defaultValues: {
       data_saida: new Date().toISOString().split('T')[0],
       hora_saida: new Date().toTimeString().slice(0, 5),
+      tipo_saida: 'locacao',
     },
   });
 
   const onSubmit = async (values: FormData) => {
     setErro('');
     try {
-      await mutation.mutateAsync({ maquinaId: maquina.id, dto: values });
+      // forbidNonWhitelisted + @IsUUID: string vazia quebra a validacao.
+      // Remove campos vazios antes de enviar.
+      const dto = Object.fromEntries(
+        Object.entries(values).filter(([, v]) => v !== '' && v !== undefined && v !== null),
+      );
+      await mutation.mutateAsync({ maquinaId: maquina.id, dto });
       onSuccess?.();
       onClose();
     } catch (e) {
@@ -95,15 +110,55 @@ export function RegistrarSaidaModal({ maquina, onClose, onSuccess }: Props) {
             />
           </div>
 
-          {/* Contrato / OS */}
+          {/* Tipo de saída — define a situação da máquina (em_locacao / evento) */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Contrato / OS</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de saída *</label>
+            <select
+              {...register('tipo_saida')}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="locacao">Locação</option>
+              <option value="comodato">Comodato</option>
+              <option value="evento">Evento</option>
+            </select>
+            {errors.tipo_saida && (
+              <p className="text-red-500 text-xs mt-1">{errors.tipo_saida.message}</p>
+            )}
+          </div>
+
+          {/* Contrato interno (opcional) */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Contrato</label>
+            <select
+              {...register('contrato_id')}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">— sem contrato vinculado —</option>
+              {contratos?.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.cliente_nome ?? 'Cliente'} — {TIPO_CONTRATO_LABEL[c.tipo]}
+                  {c.maquina_patrimonio ? ` (${c.maquina_patrimonio})` : ''}
+                </option>
+              ))}
+            </select>
+            {errors.contrato_id && (
+              <p className="text-red-500 text-xs mt-1">{errors.contrato_id.message}</p>
+            )}
+          </div>
+
+          {/* OS externa — texto livre */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">OS / Referência</label>
             <input
               type="text"
-              {...register('contrato_os')}
-              placeholder="Ex: CONT-2026-001"
+              {...register('os_referencia')}
+              maxLength={50}
+              placeholder="Ex: OS-2026-001"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {errors.os_referencia && (
+              <p className="text-red-500 text-xs mt-1">{errors.os_referencia.message}</p>
+            )}
           </div>
 
           {/* Ocorrência */}

@@ -72,8 +72,9 @@ export function RegistrarRetornoModal({ movimentacao, onClose, onSuccess }: Prop
           {movimentacao.localizacao && (
             <p><span className="font-medium">Local:</span> {movimentacao.localizacao}</p>
           )}
-          {movimentacao.contrato_os && (
-            <p><span className="font-medium">Contrato/OS:</span> {movimentacao.contrato_os}</p>
+          {/* ERR-11: contrato_os virou contrato_id + os_referencia */}
+          {movimentacao.os_referencia && (
+            <p><span className="font-medium">OS:</span> {movimentacao.os_referencia}</p>
           )}
         </div>
 

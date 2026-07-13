@@ -79,7 +79,8 @@ export default function MachineDetailPage() {
             ['Fornecedor',      data.fornecedor],
             ['Valor de Aquisição', formatCurrency(data.valor_aquisicao)],
             ['Data de Registro',   formatDate(data.data_registro)],
-            ['Contrato Ativo',     data.contrato_ativo_id ?? '—'],
+            // ERR-04: contrato_ativo_id foi removido da entity Maquina (referencia circular).
+            // O contrato ativo e derivado da movimentacao aberta, exibida no bloco abaixo.
           ].map(([label, value]) => (
             <div key={label}>
               <dt className="text-xs text-gray-400 mb-0.5">{label}</dt>
@@ -130,10 +131,11 @@ export default function MachineDetailPage() {
                 <p className="font-medium">{data.movimentacao_aberta.local}</p>
               </div>
             )}
-            {data.movimentacao_aberta.contrato_os && (
+            {/* ERR-11: contrato_os virou contrato_id + os_referencia */}
+            {data.movimentacao_aberta.os_referencia && (
               <div>
-                <p className="text-xs text-gray-400">Contrato/OS</p>
-                <p className="font-medium">{data.movimentacao_aberta.contrato_os}</p>
+                <p className="text-xs text-gray-400">OS / Referência</p>
+                <p className="font-medium">{data.movimentacao_aberta.os_referencia}</p>
               </div>
             )}
           </div>
@@ -161,7 +163,7 @@ export default function MachineDetailPage() {
                   <tr key={mov.id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-3 pr-4 whitespace-nowrap">{formatDate(mov.data_saida)}</td>
                     <td className="py-3 pr-4 text-gray-600 max-w-[200px] truncate">
-                      {mov.local ?? mov.contrato_os ?? <span className="text-gray-300">—</span>}
+                      {mov.local ?? mov.os_referencia ?? <span className="text-gray-300">—</span>}
                     </td>
                     <td className="py-3 pr-4 whitespace-nowrap">
                       {mov.data_retorno
