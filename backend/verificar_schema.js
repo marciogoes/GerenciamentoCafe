@@ -209,9 +209,13 @@ async function tableExists(conn, table) {
       console.log(warn('tabela movimentacao_maquina não encontrada'));
     }
 
+    // ERR-07: leitura_dose saiu da lista — era duplicata de leitura_doses e foi
+    // dropada. Se voltar a aparecer, e sinal de que alguma migration antiga
+    // recriou a tabela morta.
     const tabelasEsperadas = [
-      'contrato_maquinas', 'leitura_dose', 'relatorio_agendado',
+      'contrato_maquinas', 'leitura_doses', 'relatorio_agendado',
       'assinatura_tenant', 'tenant_whitelabel', 'categoria_insumo',
+      'pagamento_assinatura',
     ];
     for (const t of tabelasEsperadas) {
       console.log((await tableExists(conn, t))

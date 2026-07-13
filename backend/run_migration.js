@@ -190,31 +190,12 @@ function skipped(label) {
   } else skipped('produto.categoria_legado');
 
   // ────────────────────────────────────────────────────────────────────────────
-  console.log('\n── ERR-07: leitura_dose ──');
-  if (!await tableExists(c, 'leitura_dose')) {
-    await run(c, 'CREATE TABLE leitura_dose',
-      `CREATE TABLE leitura_dose (
-        id                  CHAR(36)   NOT NULL,
-        tenant_id           CHAR(36)   NOT NULL,
-        contrato_id         CHAR(36)   NOT NULL,
-        cliente_id          CHAR(36)   NOT NULL,
-        maquina_id          CHAR(36)   NOT NULL,
-        data_leitura        DATE       NOT NULL,
-        leitura_anterior    INT        NULL,
-        leitura_atual       INT        NOT NULL,
-        doses_consumidas    INT        NOT NULL,
-        enviado_contratante TINYINT(1) NOT NULL DEFAULT 0,
-        usuario_id          CHAR(36)   NOT NULL,
-        observacao          TEXT       NULL,
-        criado_em           DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        atualizado_em       DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        INDEX idx_ld_tenant   (tenant_id),
-        INDEX idx_ld_contrato (contrato_id),
-        INDEX idx_ld_maquina  (maquina_id),
-        INDEX idx_ld_data     (tenant_id, data_leitura)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
-  } else skipped('leitura_dose');
+  // ERR-07: o CREATE TABLE leitura_dose foi REMOVIDO daqui.
+  // Ela era duplicata de leitura_doses (a viva, usada por DosesModule). A entity
+  // LeituraDose nunca foi registrada em nenhum TypeOrmModule, entao a tabela era
+  // criada a cada migration e nunca recebia uma linha. O DROP esta no fim deste
+  // arquivo, com guarda de "so se estiver vazia".
+  // ────────────────────────────────────────────────────────────────────────────
 
   // ────────────────────────────────────────────────────────────────────────────
   console.log('\n── ERR-19: tenant_whitelabel ──');
@@ -479,6 +460,22 @@ function skipped(label) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       COMMENT='ERR-24: cobranca do SaaS ao tenant (nao confundir com lancamento_mensal, que e o tenant cobrando os clientes dele)'`);
   } else skipped('tabela pagamento_assinatura');
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // ERR-07: leitura_dose era duplicata de leitura_doses. A entity nunca foi
+  // registrada em nenhum module (o TypeORM nao a conhecia) e a tabela nasceu e
+  // morreu vazia. Dropa — mas so se estiver realmente vazia. Se alguem gravou
+  // algo nela, a tabela fica e o aviso aparece: e sinal de que nao era morta.
+  // ────────────────────────────────────────────────────────────────────────────
+  if (await tableExists(c, 'leitura_dose')) {
+    const [r] = await c.query('SELECT COUNT(*) AS n FROM leitura_dose');
+    if (Number(r[0].n) === 0) {
+      await run(c, 'DROP tabela leitura_dose (ERR-07, orfa e vazia)', 'DROP TABLE leitura_dose');
+    } else {
+      console.log(`  ⚠️   leitura_dose tem ${r[0].n} linha(s) — NAO dropada. Investigue antes.`);
+      skip++;
+    }
+  } else skipped('DROP leitura_dose — tabela ja nao existe');
 
   // ────────────────────────────────────────────────────────────────────────────
   await c.end();
