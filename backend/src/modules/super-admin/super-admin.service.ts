@@ -6,12 +6,7 @@ import { ConfigService }    from '@nestjs/config';
 import { TenantsService }   from '../tenants/tenants.service';
 import { Tenant }           from '../tenants/entities/tenant.entity';
 import { FiltrosTenantDto } from './dto/super-admin.dto';
-
-const PRECOS_PLANO: Record<string, number> = {
-  starter:    97,
-  pro:        197,
-  enterprise: 500,
-};
+import { PLANOS, mrrDoTenant, descontoVigente } from '../../common/planos';
 
 @Injectable()
 export class SuperAdminService {
@@ -126,7 +121,11 @@ export class SuperAdminService {
         usuarios_ativos: usuarios,
         maquinas:        maquinas,
         contratos:       contratos,
-        mrr:             tenant.status === 'ativo' ? (PRECOS_PLANO[tenant.plano] ?? 0) : 0,
+        // mrrDoTenant aplica o desconto comercial vigente; antes o valor cheio
+        // do plano era reportado mesmo para tenants com desconto ativo.
+        mrr:              mrrDoTenant(tenant),
+        preco_cheio:      PLANOS[tenant.plano]?.preco_mensal ?? 0,
+        desconto_vigente: descontoVigente(tenant),
         dias_trial_restantes: tenant.status === 'trial' && tenant.trial_ate
           ? Math.max(0, Math.ceil(
               (new Date(tenant.trial_ate).getTime() - Date.now()) / 86400000,
@@ -184,35 +183,22 @@ export class SuperAdminService {
 
   async listarPlanos(): Promise<any[]> {
     const tenants = await this.tenantsService.listarTodos();
-    return [
-      {
-        plano:        'starter',
-        preco_mensal: 97,
-        max_usuarios: 5,
-        max_maquinas: 50,
-        tenants:      tenants.filter(t => t.plano === 'starter').length,
-        ativos:       tenants.filter(t => t.plano === 'starter' && t.status === 'ativo').length,
-        mrr:          tenants.filter(t => t.plano === 'starter' && t.status === 'ativo').length * 97,
-      },
-      {
-        plano:        'pro',
-        preco_mensal: 197,
-        max_usuarios: 20,
-        max_maquinas: 200,
-        tenants:      tenants.filter(t => t.plano === 'pro').length,
-        ativos:       tenants.filter(t => t.plano === 'pro' && t.status === 'ativo').length,
-        mrr:          tenants.filter(t => t.plano === 'pro' && t.status === 'ativo').length * 197,
-      },
-      {
-        plano:        'enterprise',
-        preco_mensal: 500,
-        max_usuarios: -1, // ilimitado
-        max_maquinas: -1,
-        tenants:      tenants.filter(t => t.plano === 'enterprise').length,
-        ativos:       tenants.filter(t => t.plano === 'enterprise' && t.status === 'ativo').length,
-        mrr:          tenants.filter(t => t.plano === 'enterprise' && t.status === 'ativo').length * 500,
-      },
-    ];
+
+    // Antes: os precos e os limites estavam escritos a mao aqui, e o MRR era
+    // "qtd de ativos x preco cheio" — ignorando o desconto de cada tenant.
+    // Agora vem de common/planos e o MRR e somado tenant a tenant.
+    return Object.values(PLANOS).map(def => {
+      const doPlano = tenants.filter(t => t.plano === def.plano);
+      return {
+        plano:        def.plano,
+        preco_mensal: def.preco_mensal,
+        max_usuarios: def.max_usuarios,
+        max_maquinas: def.max_maquinas,
+        tenants:      doPlano.length,
+        ativos:       doPlano.filter(t => t.status === 'ativo').length,
+        mrr:          Math.round(doPlano.reduce((s, t) => s + mrrDoTenant(t), 0) * 100) / 100,
+      };
+    });
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -370,13 +356,15 @@ export class SuperAdminService {
     const tenant = await this.tenantsService.buscarPorId(tenantId);
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
 
-    // Tenta persistir nos campos do tenant (ignorado se coluna não existir ainda)
+    // As colunas ja existem no schema. Se este UPDATE falhar, o desconto nao foi
+    // aplicado e o super admin precisa saber — antes o erro era engolido por um
+    // .catch(() => {}) e a tela dizia "desconto aplicado" sem ter aplicado nada.
     await this.dataSource.query(
       `UPDATE tenant
          SET desconto_percentual = ?, desconto_expira_em = ?
        WHERE id = ?`,
       [percentual, expira_em ?? null, tenantId],
-    ).catch(() => { /* campo pode não existir em dev — migration pendente */ });
+    );
 
     // Log sempre gravado
     const descricao = [
@@ -413,7 +401,7 @@ export class SuperAdminService {
       ...tenant,
       _usuarios: usuarios,
       _maquinas: maquinas,
-      _mrr:      tenant.status === 'ativo' ? (PRECOS_PLANO[tenant.plano] ?? 0) : 0,
+      _mrr:      mrrDoTenant(tenant),   // aplica desconto vigente
     };
   }
 

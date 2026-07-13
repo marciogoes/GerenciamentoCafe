@@ -8,6 +8,7 @@ import { v4 as uuidv4 }     from 'uuid';
 import * as crypto          from 'crypto';
 
 import { Tenant }           from './entities/tenant.entity';
+import { mrrTotal }         from '../../common/planos';
 import { CadastroTenantDto, ConfigurarTenantDto, WizardPassoDto } from './dto/tenant.dto';
 import { UsersService }     from '../users/users.service';
 import { MailService }      from '../mail/mail.service';
@@ -181,14 +182,13 @@ export class TenantsService {
     mrr_estimado: number; por_plano: Record<string, number>;
   }> {
     const tenants   = await this.repo.find();
-    const precos    = { starter: 97, pro: 197, enterprise: 500 };
     const ativos    = tenants.filter(t => t.status === 'ativo').length;
     const trials    = tenants.filter(t => t.status === 'trial').length;
     const suspensos = tenants.filter(t => t.status === 'suspenso').length;
     const cancelados= tenants.filter(t => t.status === 'cancelado').length;
-    const mrr       = tenants
-      .filter(t => t.status === 'ativo')
-      .reduce((s, t) => s + (precos[t.plano] ?? 0), 0);
+    // Antes: somava o preco cheio da tabela e ignorava desconto_percentual,
+    // o que inflava o MRR de todo tenant com desconto comercial.
+    const mrr       = mrrTotal(tenants);
 
     return {
       total: tenants.length, ativos, trials, suspensos, cancelados,
