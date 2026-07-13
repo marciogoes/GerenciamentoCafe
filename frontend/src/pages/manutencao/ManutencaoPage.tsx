@@ -82,7 +82,7 @@ export default function ManutencaoPage() {
         setModalNovo(false);
         formNovo.reset();
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -94,7 +94,7 @@ export default function ManutencaoPage() {
         qc.invalidateQueries('manutencao');
         qc.invalidateQueries('manutencao-kpis');
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -108,7 +108,7 @@ export default function ManutencaoPage() {
         qc.invalidateQueries('maquinas');
         setDetalhe(null);
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -125,7 +125,7 @@ export default function ManutencaoPage() {
         formConcluir.reset();
         setDetalhe(null);
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 

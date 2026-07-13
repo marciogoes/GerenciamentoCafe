@@ -62,7 +62,7 @@ export function UsuariosPage() {
         setShowConvite(false);
         inviteForm.reset();
       },
-      onError: (err) => toast.error(getErrorMessage(err)),
+      onError: (err) => { toast.error(getErrorMessage(err)); },
     },
   );
 
@@ -74,7 +74,7 @@ export function UsuariosPage() {
         toast.success(res.data?.mensagem || 'Usuário atualizado.');
         queryClient.invalidateQueries('users');
       },
-      onError: (err) => toast.error(getErrorMessage(err)),
+      onError: (err) => { toast.error(getErrorMessage(err)); },
     },
   );
 
@@ -85,7 +85,7 @@ export function UsuariosPage() {
         toast.success('Convite reenviado com sucesso!');
         queryClient.invalidateQueries('users');
       },
-      onError: (err) => toast.error(getErrorMessage(err)),
+      onError: (err) => { toast.error(getErrorMessage(err)); },
     },
   );
 
@@ -97,7 +97,7 @@ export function UsuariosPage() {
         queryClient.invalidateQueries('users');
         setEditando(null);
       },
-      onError: (err) => toast.error(getErrorMessage(err)),
+      onError: (err) => { toast.error(getErrorMessage(err)); },
     },
   );
 

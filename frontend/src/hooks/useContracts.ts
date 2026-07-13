@@ -38,7 +38,7 @@ export function useCriarCliente() {
         qc.invalidateQueries('clientes');
         toast.success('Cliente cadastrado com sucesso!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -53,7 +53,7 @@ export function useAtualizarCliente() {
         qc.invalidateQueries(['cliente', id]);
         toast.success('Cliente atualizado!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -92,7 +92,7 @@ export function useCriarContrato() {
         qc.invalidateQueries('clientes');
         toast.success('Contrato criado com sucesso!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -107,7 +107,7 @@ export function useAtualizarContrato() {
         qc.invalidateQueries(['contrato', id]);
         toast.success('Contrato atualizado!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -122,7 +122,7 @@ export function useAplicarReajuste() {
         qc.invalidateQueries(['contrato', id]);
         toast.success('Reajuste aplicado com sucesso!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -150,7 +150,7 @@ export function useGerarLancamentos() {
         qc.invalidateQueries('dashboardKpis');
         toast.success(`${data.gerados} lançamento(s) gerados com sucesso!`);
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -167,7 +167,7 @@ export function useRegistrarPagamento() {
         qc.invalidateQueries('dashboardAlertas');
         toast.success('Pagamento registrado com sucesso!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }

@@ -32,7 +32,7 @@ export function useExportarFinanceiro() {
         baixarArquivo(blob, `relatorio-financeiro-${di}-${df}.xlsx`);
         toast.success('Relatório financeiro exportado!');
       },
-      onError: () => toast.error('Erro ao exportar relatório financeiro.'),
+      onError: () => { toast.error('Erro ao exportar relatório financeiro.'); },
     },
   );
 }
@@ -54,7 +54,7 @@ export function useExportarContratos() {
         baixarArquivo(blob, 'relatorio-contratos.xlsx');
         toast.success('Relatório de contratos exportado!');
       },
-      onError: () => toast.error('Erro ao exportar contratos.'),
+      onError: () => { toast.error('Erro ao exportar contratos.'); },
     },
   );
 }
@@ -77,7 +77,7 @@ export function useExportarMaquinas() {
         baixarArquivo(blob, `relatorio-maquinas-${di}-${df}.xlsx`);
         toast.success('Relatório de máquinas exportado!');
       },
-      onError: () => toast.error('Erro ao exportar máquinas.'),
+      onError: () => { toast.error('Erro ao exportar máquinas.'); },
     },
   );
 }
@@ -91,7 +91,7 @@ export function useExportarEstoque() {
         baixarArquivo(blob, 'relatorio-estoque.xlsx');
         toast.success('Relatório de estoque exportado!');
       },
-      onError: () => toast.error('Erro ao exportar estoque.'),
+      onError: () => { toast.error('Erro ao exportar estoque.'); },
     },
   );
 }

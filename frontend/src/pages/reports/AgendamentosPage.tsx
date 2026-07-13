@@ -50,7 +50,7 @@ function ModalNovo({ onClose, onCreated }: { onClose: () => void; onCreated: () 
     (payload: any) => reportSchedulesApi.criar(payload),
     {
       onSuccess: () => { toast.success('Agendamento criado!'); onCreated(); onClose(); },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -148,7 +148,7 @@ export default function AgendamentosPage() {
     ({ id, ativo }: { id: string; ativo: boolean }) => reportSchedulesApi.atualizar(id, { ativo }),
     {
       onSuccess: (_d, vars) => { toast.success(vars.ativo ? 'Agendamento reativado.' : 'Agendamento pausado.'); invalidar(); },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -156,7 +156,7 @@ export default function AgendamentosPage() {
     (id: string) => reportSchedulesApi.executar(id).then(r => r.data),
     {
       onSuccess: (res: any) => { toast.success(res?.mensagem ?? 'Relatório enviado.'); invalidar(); },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -164,7 +164,7 @@ export default function AgendamentosPage() {
     (id: string) => reportSchedulesApi.remover(id),
     {
       onSuccess: () => { toast.success('Agendamento removido.'); invalidar(); },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 

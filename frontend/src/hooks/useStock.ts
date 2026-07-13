@@ -39,7 +39,7 @@ export function useCriarProduto() {
         qc.invalidateQueries('resumo-estoque');
         toast.success('Produto cadastrado com sucesso!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -54,7 +54,7 @@ export function useAtualizarProduto() {
         qc.invalidateQueries('produtos');
         toast.success('Produto atualizado!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -87,7 +87,7 @@ export function useRegistrarEntrada() {
         const msg = `Entrada registrada! Novo saldo: ${Number(result.saldo_atual).toFixed(3)}`;
         toast.success(msg);
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -105,7 +105,7 @@ export function useRegistrarSaida() {
         const alerta = result.alerta_estoque ? ' ⚠️ Estoque abaixo do mínimo!' : '';
         toast.success(`Saída registrada! Novo saldo: ${Number(result.saldo_atual).toFixed(3)}${alerta}`);
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }

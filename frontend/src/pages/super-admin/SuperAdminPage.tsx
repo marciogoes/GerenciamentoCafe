@@ -80,7 +80,7 @@ export default function SuperAdminPage() {
         qc.invalidateQueries('super-admin-tenants');
         qc.invalidateQueries('super-admin-metricas');
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -92,7 +92,7 @@ export default function SuperAdminPage() {
         toast.success('Plano atualizado!');
         qc.invalidateQueries('super-admin-tenants');
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -106,7 +106,7 @@ export default function SuperAdminPage() {
         qc.invalidateQueries('super-admin-metricas');
         setDescontoTenant(null);
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 

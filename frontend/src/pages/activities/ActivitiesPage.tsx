@@ -172,7 +172,7 @@ export default function ActivitiesPage() {
     ({ id, dto }: { id: string; dto: any }) => activitiesApi.baixar(id, dto),
     {
       onSuccess: () => { toast.success('Atividade registrada!'); invalidar(); setModalBaixa(null); },
-      onError:   (e) => toast.error(getErrorMessage(e)),
+      onError:   (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -180,7 +180,7 @@ export default function ActivitiesPage() {
     (id: string) => activitiesApi.naoAplicavel(id),
     {
       onSuccess: () => { toast.success('Marcado como não aplicável'); invalidar(); },
-      onError:   (e) => toast.error(getErrorMessage(e)),
+      onError:   (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -188,7 +188,7 @@ export default function ActivitiesPage() {
     (id: string) => activitiesApi.reabrir(id),
     {
       onSuccess: () => { toast.success('Atividade reaberta'); invalidar(); },
-      onError:   (e) => toast.error(getErrorMessage(e)),
+      onError:   (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -203,7 +203,7 @@ export default function ActivitiesPage() {
         );
         invalidar();
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -508,7 +508,7 @@ function ModalModelos({ onClose, onChanged }: { onClose: () => void; onChanged: 
         toast.success(editId ? 'Modelo atualizado!' : 'Modelo cadastrado!');
         invalidarModelos(); onChanged(); resetForm();
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -516,7 +516,7 @@ function ModalModelos({ onClose, onChanged }: { onClose: () => void; onChanged: 
     (id: string) => activitiesApi.excluirModelo(id),
     {
       onSuccess: () => { toast.success('Modelo removido.'); invalidarModelos(); onChanged(); },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 

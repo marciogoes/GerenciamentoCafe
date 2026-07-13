@@ -99,7 +99,7 @@ export default function SettingsPage() {
         qc.invalidateQueries('settings-tenant');
         recarregar();
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 
@@ -110,7 +110,7 @@ export default function SettingsPage() {
         toast.success('Configurações operacionais salvas!');
         qc.invalidateQueries('settings-tenant');
       },
-      onError: (e) => toast.error(getErrorMessage(e)),
+      onError: (e) => { toast.error(getErrorMessage(e)); },
     },
   );
 

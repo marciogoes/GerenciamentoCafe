@@ -30,7 +30,7 @@ export function useCriarModelo() {
         qc.invalidateQueries('catalogo');
         toast.success('Modelo cadastrado com sucesso!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -44,7 +44,7 @@ export function useAtualizarModelo() {
         qc.invalidateQueries('catalogo');
         toast.success('Modelo atualizado!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -58,7 +58,7 @@ export function useExcluirModelo() {
         qc.invalidateQueries('catalogo');
         toast.success('Modelo removido!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -135,7 +135,7 @@ export function useCriarMaquina() {
         qc.invalidateQueries('resumo-frota');
         toast.success('Máquina cadastrada com sucesso!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -150,7 +150,7 @@ export function useAtualizarMaquina() {
         qc.invalidateQueries('maquinas');
         toast.success('Máquina atualizada!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -168,7 +168,7 @@ export function useRegistrarSaida() {
         qc.invalidateQueries('maquinas-fora-da-base');
         toast.success('Saída registrada com sucesso!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
@@ -186,7 +186,7 @@ export function useRegistrarRetorno() {
         qc.invalidateQueries('maquinas-fora-da-base');
         toast.success('Retorno registrado com sucesso!');
       },
-      onError: (e: any) => toast.error(getErrorMessage(e)),
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },
   );
 }
