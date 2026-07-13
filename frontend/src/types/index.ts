@@ -426,6 +426,21 @@ export interface ItemInadimplencia {
 }
 
 // ── Estoque ──────────────────────────────────────────────────
+
+/**
+ * ERR-14: categoria de insumo configuravel por tenant (tabela categoria_insumo).
+ * Substitui o ENUM fixo de cafe — o SaaS precisa servir qualquer nicho de vending.
+ */
+export interface CategoriaInsumo {
+  id:        string;
+  tenant_id: string;
+  nome:      string;
+  ordem:     number;
+  ativo:     boolean;
+  produtos?: number;   // quantos produtos usam esta categoria
+}
+
+/** @deprecated ENUM legado de café. Use CategoriaInsumo. */
 export type CategoriaProduto =
   | 'cappuccino' | 'chocolate' | 'cafe_graos'
   | 'cafe_leite' | 'descartavel' | 'outros';
@@ -438,7 +453,9 @@ export interface Produto {
   codigo:           string;
   descricao:        string;
   marca:            string | null;
-  categoria:        CategoriaProduto;
+  categoria_id:     string | null;   // ERR-14: FK para categoria_insumo
+  categoria_nome:   string | null;
+  categoria:        string | null;   // nome da categoria (fallback no legado)
   unidade:          string;
   valor_unitario:   number;
   validade:         string | null;

@@ -57,7 +57,7 @@ export function ProdutoDetailPage() {
           <p className="text-sm text-gray-500 mt-0.5">
             Código: <strong>{produto.codigo}</strong>
             {produto.marca && <> · {produto.marca}</>}
-            {' · '}{produto.categoria.replace('_', ' ')}
+            {' · '}{produto.categoria ?? 'Sem categoria'}
           </p>
         </div>
         <div className="flex gap-2">

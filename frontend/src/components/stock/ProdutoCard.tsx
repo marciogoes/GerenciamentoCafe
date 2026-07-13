@@ -8,6 +8,9 @@ interface Props {
   onSaida:   (p: Produto) => void;
 }
 
+// ERR-14: o backend agora devolve `categoria` ja como nome legivel (vindo de
+// categoria_insumo, com fallback no valor legado). Este mapa so cobre produtos
+// antigos que ainda nao foram ligados a uma categoria.
 const CATEGORIA_LABELS: Record<string, string> = {
   cappuccino:  'Cappuccino',
   chocolate:   'Chocolate',
@@ -16,6 +19,11 @@ const CATEGORIA_LABELS: Record<string, string> = {
   descartavel: 'Descartável',
   outros:      'Outros',
 };
+
+function rotuloCategoria(p: { categoria: string | null }): string {
+  if (!p.categoria) return 'Sem categoria';
+  return CATEGORIA_LABELS[p.categoria] ?? p.categoria;
+}
 
 const SITUACAO_BADGE: Record<string, string> = {
   normal: 'badge-success',
@@ -91,7 +99,7 @@ export default function ProdutoCard({ produto, onEntrada, onSaida }:
 
       {/* Metadados */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="badge badge-neutral">{CATEGORIA_LABELS[produto.categoria]}</span>
+        <span className="badge badge-neutral">{rotuloCategoria(produto)}</span>
         {produto.marca && <span className="text-xs text-gray-400">{produto.marca}</span>}
         <span className="text-xs text-gray-400 ml-auto">
           R$ {produto.valor_unitario.toFixed(4)}/{produto.unidade}

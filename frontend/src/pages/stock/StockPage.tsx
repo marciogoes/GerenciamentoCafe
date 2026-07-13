@@ -2,24 +2,20 @@ import { useState } from 'react';
 import {
   Package, ArrowDownCircle, ArrowUpCircle,
   AlertTriangle, TrendingUp, DollarSign, Search,
-  Plus, Edit, ChevronRight, BarChart3,
+  Plus, Edit, ChevronRight, BarChart3, Tag,
 } from 'lucide-react';
-import { useProdutos, useResumoEstoque, useAlertasEstoque } from '../../hooks/useStock';
+import {
+  useProdutos, useResumoEstoque, useAlertasEstoque, useCategorias,
+} from '../../hooks/useStock';
 import { ProdutoFormModal }   from '../../components/stock/ProdutoFormModal';
 import { MovimentacaoModal }  from '../../components/stock/MovimentacaoModal';
-import type { Produto, CategoriaProduto } from '../../types';
+import { CategoriasModal }    from '../../components/stock/CategoriasModal';
+import type { Produto } from '../../types';
 import { Link } from 'react-router-dom';
 import { formataMoeda } from '../../utils/format';
 
-const CATEGORIAS: { value: string; label: string }[] = [
-  { value: '',            label: 'Todas as categorias' },
-  { value: 'cappuccino',  label: 'Cappuccino' },
-  { value: 'chocolate',   label: 'Chocolate' },
-  { value: 'cafe_graos',  label: 'Café em Grãos' },
-  { value: 'cafe_leite',  label: 'Café com Leite' },
-  { value: 'descartavel', label: 'Descartável' },
-  { value: 'outros',      label: 'Outros' },
-];
+// ERR-14: a lista fixa de categorias de cafe saiu daqui — agora vem do backend,
+// configurada por tenant (tabela categoria_insumo).
 
 const SITUACOES = [
   { value: '',      label: 'Todos' },
@@ -44,17 +40,20 @@ function SituacaoBadge({ situacao }: { situacao: Produto['situacao'] }) {
 
 export function StockPage() {
   const [busca,      setBusca]      = useState('');
-  const [categoria,  setCategoria]  = useState('');
+  const [categoria,  setCategoria]  = useState('');   // ERR-14: guarda o UUID da categoria
   const [situacao,   setSituacao]   = useState('');
   const [modalForm,  setModalForm]  = useState(false);
+  const [modalCategorias, setModalCategorias] = useState(false);
   const [editProd,   setEditProd]   = useState<Produto | undefined>();
   const [modalMov,   setModalMov]   = useState<'entrada' | 'saida' | null>(null);
   const [prodMov,    setProdMov]    = useState<string | undefined>();
 
+  const { data: categorias = [] } = useCategorias();
+
   const params: Record<string, string> = {};
-  if (categoria) params.categoria = categoria;
-  if (situacao)  params.situacao  = situacao;
-  if (busca)     params.busca     = busca;
+  if (categoria) params.categoria_id = categoria;
+  if (situacao)  params.situacao     = situacao;
+  if (busca)     params.busca        = busca;
 
   const { data: produtos = [], isLoading } = useProdutos(params);
   const { data: resumo }                   = useResumoEstoque();
@@ -96,6 +95,11 @@ export function StockPage() {
           <button onClick={() => abrirMovimentacao('entrada')}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
             <ArrowDownCircle size={16} /> Entrada
+          </button>
+          {/* ERR-14: categorias configuráveis por tenant */}
+          <button onClick={() => setModalCategorias(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 text-sm font-medium">
+            <Tag size={16} /> Categorias
           </button>
           <button onClick={() => setModalForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium">
@@ -168,9 +172,11 @@ export function StockPage() {
             placeholder="Buscar produto..."
             className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-emerald-500" />
         </div>
+        {/* ERR-14: as categorias vêm do tenant, não de um ENUM fixo de café */}
         <select value={categoria} onChange={e => setCategoria(e.target.value)}
           className="text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 bg-white">
-          {CATEGORIAS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          <option value="">Todas as categorias</option>
+          {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
         <select value={situacao} onChange={e => setSituacao(e.target.value)}
           className="text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 bg-white">
@@ -266,6 +272,10 @@ export function StockPage() {
       )}
       {modalMov && (
         <MovimentacaoModal tipo={modalMov} produtoIdInicial={prodMov} onClose={fecharModal} />
+      )}
+      {/* ERR-14 */}
+      {modalCategorias && (
+        <CategoriasModal onClose={() => setModalCategorias(false)} />
       )}
     </div>
   );

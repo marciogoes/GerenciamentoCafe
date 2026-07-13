@@ -3,29 +3,22 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { X, Package } from 'lucide-react';
-import { useCriarProduto, useAtualizarProduto } from '../../hooks/useStock';
-import type { Produto, CategoriaProduto } from '../../types';
+import { useCriarProduto, useAtualizarProduto, useCategorias } from '../../hooks/useStock';
+import type { Produto } from '../../types';
 
+// ERR-14: a categoria deixou de ser um ENUM fixo de cafe e virou FK para
+// categoria_insumo, configuravel por tenant.
 const schema = z.object({
   codigo:         z.string().min(1).max(10),
   descricao:      z.string().min(2).max(200),
   marca:          z.string().max(100).optional(),
-  categoria:      z.enum(['cappuccino','chocolate','cafe_graos','cafe_leite','descartavel','outros']),
+  categoria_id:   z.string().uuid('Selecione uma categoria').optional().or(z.literal('')),
   unidade:        z.string().min(1).max(10),
   valor_unitario: z.coerce.number().min(0),
   validade:       z.string().optional(),
   estoque_minimo: z.coerce.number().min(0).optional(),
 });
 type Form = z.infer<typeof schema>;
-
-const CATEGORIAS: { value: CategoriaProduto; label: string }[] = [
-  { value: 'cappuccino',  label: 'Cappuccino' },
-  { value: 'chocolate',   label: 'Chocolate' },
-  { value: 'cafe_graos',  label: 'Café em Grãos' },
-  { value: 'cafe_leite',  label: 'Café com Leite' },
-  { value: 'descartavel', label: 'Descartável' },
-  { value: 'outros',      label: 'Outros' },
-];
 
 interface Props {
   onClose: () => void;
@@ -34,8 +27,9 @@ interface Props {
 
 export function ProdutoFormModal({ onClose, produto }: Props) {
   const isEdit = !!produto;
-  const criar    = useCriarProduto();
+  const criar     = useCriarProduto();
   const atualizar = useAtualizarProduto();
+  const { data: categorias } = useCategorias();
 
   const { register, handleSubmit, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
@@ -43,19 +37,23 @@ export function ProdutoFormModal({ onClose, produto }: Props) {
       codigo:         produto.codigo,
       descricao:      produto.descricao,
       marca:          produto.marca ?? '',
-      categoria:      produto.categoria,
+      categoria_id:   produto.categoria_id ?? '',
       unidade:        produto.unidade,
       valor_unitario: produto.valor_unitario,
       validade:       produto.validade ?? '',
       estoque_minimo: produto.estoque_minimo ?? undefined,
-    } : { categoria: 'cappuccino', unidade: 'KG' },
+    } : { unidade: 'KG', categoria_id: '' },
   });
 
   const onSubmit = async (data: Form) => {
+    // forbidNonWhitelisted + @IsUUID: string vazia quebra a validacao
+    const dto = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== '' && v !== undefined),
+    );
     if (isEdit) {
-      await atualizar.mutateAsync({ id: produto!.id, dto: data });
+      await atualizar.mutateAsync({ id: produto!.id, dto });
     } else {
-      await criar.mutateAsync(data);
+      await criar.mutateAsync(dto);
     }
     onClose();
   };
@@ -88,13 +86,24 @@ export function ProdutoFormModal({ onClose, produto }: Props) {
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100" />
               {errors.codigo && <p className="text-red-500 text-xs mt-1">{errors.codigo.message}</p>}
             </div>
-            {/* Categoria */}
+            {/* Categoria — ERR-14: vem de categoria_insumo, por tenant */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
-              <select {...register('categoria')}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+              <select {...register('categoria_id')}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500">
-                {CATEGORIAS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                <option value="">— sem categoria —</option>
+                {categorias?.map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
               </select>
+              {errors.categoria_id && (
+                <p className="text-red-500 text-xs mt-1">{errors.categoria_id.message}</p>
+              )}
+              {!categorias?.length && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Nenhuma categoria cadastrada. Crie em Estoque › Categorias.
+                </p>
+              )}
             </div>
           </div>
 

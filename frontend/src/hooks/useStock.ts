@@ -1,7 +1,71 @@
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';
 import { stockApi, getErrorMessage } from '../services/api';
-import type { Produto, MovimentacaoEstoque, ResumoEstoque, RelatorioEstoque } from '../types';
+import type {
+  Produto, MovimentacaoEstoque, ResumoEstoque, RelatorioEstoque, CategoriaInsumo,
+} from '../types';
+
+// ─────────────────────────────────────────────────────────────
+//  CATEGORIAS DE INSUMO — ERR-14
+// ─────────────────────────────────────────────────────────────
+
+export function useCategorias() {
+  return useQuery<CategoriaInsumo[]>(
+    ['categorias-insumo'],
+    async () => {
+      const { data } = await stockApi.categorias();
+      return data;
+    },
+    { staleTime: 60_000 },
+  );
+}
+
+export function useCriarCategoria() {
+  const qc = useQueryClient();
+  return useMutation(
+    (dto: { nome: string; ordem?: number }) => stockApi.criarCategoria(dto).then(r => r.data),
+    {
+      onSuccess: () => {
+        qc.invalidateQueries('categorias-insumo');
+        toast.success('Categoria criada.');
+      },
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
+    },
+  );
+}
+
+export function useRemoverCategoria() {
+  const qc = useQueryClient();
+  return useMutation(
+    (id: string) => stockApi.removerCategoria(id).then(r => r.data),
+    {
+      onSuccess: (r: any) => {
+        qc.invalidateQueries('categorias-insumo');
+        qc.invalidateQueries('produtos');
+        toast.success(r?.mensagem ?? 'Categoria removida.');
+      },
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
+    },
+  );
+}
+
+/** Cria as categorias a partir do ENUM legado e liga os produtos. */
+export function useImportarCategoriasLegado() {
+  const qc = useQueryClient();
+  return useMutation(
+    () => stockApi.importarCategoriasLegado().then(r => r.data),
+    {
+      onSuccess: (r: any) => {
+        qc.invalidateQueries('categorias-insumo');
+        qc.invalidateQueries('produtos');
+        toast.success(
+          `${r.criadas} categoria(s) criada(s), ${r.produtos_ligados} produto(s) ligado(s).`,
+        );
+      },
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
+    },
+  );
+}
 
 // ─────────────────────────────────────────────────────────────
 //  PRODUTOS

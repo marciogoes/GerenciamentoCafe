@@ -133,6 +133,13 @@ export const stockApi = {
   resumo: () => api.get('/stock/dashboard'),
   relatorio: (di?: string, df?: string) =>
     api.get('/stock/report', { params: { data_inicio: di, data_fim: df } }),
+
+  // ERR-14: categorias de insumo configuraveis por tenant
+  categorias:         () => api.get('/stock/categories'),
+  criarCategoria:     (dto: any) => api.post('/stock/categories', dto),
+  atualizarCategoria: (id: string, dto: any) => api.patch(`/stock/categories/${id}`, dto),
+  removerCategoria:   (id: string) => api.delete(`/stock/categories/${id}`),
+  importarCategoriasLegado: () => api.post('/stock/categories/importar-legado'),
 };
 
 // ── Clientes (Sprint 6) ──────────────────────────────────────

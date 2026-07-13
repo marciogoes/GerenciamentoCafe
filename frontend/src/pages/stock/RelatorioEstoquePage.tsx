@@ -38,10 +38,11 @@ export function RelatorioEstoquePage() {
 
   const { data: relatorio, isLoading } = useRelatorioEstoque(dataInicio, dataFim);
 
-  // Agrupa por categoria
+  // Agrupa por categoria — ERR-14: produto pode nao ter categoria vinculada
   const porCategoria = relatorio?.itens.reduce<Record<string, typeof relatorio.itens>>((acc, p) => {
-    if (!acc[p.categoria]) acc[p.categoria] = [];
-    acc[p.categoria].push(p);
+    const chave = p.categoria ?? 'Sem categoria';
+    if (!acc[chave]) acc[chave] = [];
+    acc[chave].push(p);
     return acc;
   }, {});
 
