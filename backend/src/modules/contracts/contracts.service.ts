@@ -8,6 +8,7 @@ import { v4 as uuidv4 }                        from 'uuid';
 
 import { Cliente }             from './entities/cliente.entity';
 import { Contrato }            from './entities/contrato.entity';
+import { ContratoMaquinas }    from './entities/contrato-maquinas.entity';
 import { LancamentoMensal }    from './entities/lancamento-mensal.entity';
 import { ReajusteContratual }  from './entities/reajuste-contratual.entity';
 import {
@@ -26,6 +27,9 @@ export class ContractsService {
 
     @InjectRepository(Contrato)
     private contratoRepo: Repository<Contrato>,
+
+    @InjectRepository(ContratoMaquinas)
+    private contratoMaquinaRepo: Repository<ContratoMaquinas>,
 
     @InjectRepository(LancamentoMensal)
     private lancamentoRepo: Repository<LancamentoMensal>,
@@ -176,8 +180,10 @@ export class ContractsService {
       where: { contrato_id: id, tenant_id: tenantId },
       order: { competencia: 'DESC' },
     });
+    // ERR-03: maquinas vinculadas vem da tabela N:N, nao do campo deprecated
+    const maquinas = await this.listarMaquinasDoContrato(tenantId, id);
 
-    return { ...contrato, cliente, reajustes, lancamentos };
+    return { ...contrato, cliente, maquinas, reajustes, lancamentos };
   }
 
   async criarContrato(tenantId: string, dto: CriarContratoDto): Promise<Contrato> {
@@ -205,13 +211,126 @@ export class ContractsService {
       indice_reajuste:  dto.indice_reajuste ?? null,
       observacao:       dto.observacao ?? null,
     });
-    return this.contratoRepo.save(c);
+    const salvo = await this.contratoRepo.save(c);
+
+    // ERR-03: a fonte de verdade do vinculo maquina<->contrato e a tabela N:N.
+    // O service antes gravava so em contrato.maquina_id (deprecated), e por isso
+    // contrato_maquinas ficava sempre vazia e o ciclo de faturamento nao fechava.
+    if (dto.maquina_id) {
+      await this.vincularMaquina(tenantId, salvo.id, dto.maquina_id);
+    }
+    return salvo;
   }
 
   async atualizarContrato(tenantId: string, id: string, dto: AtualizarContratoDto): Promise<Contrato> {
     const c = await this.buscarContrato(tenantId, id);
+    const maquinaAnterior = c.maquina_id;
+
     Object.assign(c, dto);
-    return this.contratoRepo.save(c);
+    const salvo = await this.contratoRepo.save(c);
+
+    // ERR-03: mantem contrato_maquinas em sincronia quando a maquina principal muda
+    if (dto.maquina_id !== undefined && dto.maquina_id !== maquinaAnterior) {
+      if (maquinaAnterior) await this.desvincularMaquina(tenantId, id, maquinaAnterior);
+      if (dto.maquina_id)  await this.vincularMaquina(tenantId, id, dto.maquina_id);
+    }
+    return salvo;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  MAQUINAS DO CONTRATO — ERR-03 (RF-C02, relacao N:N)
+  // ══════════════════════════════════════════════════════════════
+
+  /** Maquinas atualmente vinculadas ao contrato, com dados da maquina. */
+  async listarMaquinasDoContrato(tenantId: string, contratoId: string) {
+    await this.buscarContrato(tenantId, contratoId);
+    return this.ds.query(
+      `SELECT cm.maquina_id, cm.data_inclusao, cm.ativo,
+              m.patrimonio, m.numero_serie, m.situacao, m.localizacao_atual,
+              mc.nome AS modelo_nome
+         FROM contrato_maquinas cm
+         JOIN maquina m           ON m.id  = cm.maquina_id AND m.tenant_id = cm.tenant_id
+         LEFT JOIN modelo_catalogo mc ON mc.id = m.modelo_id
+        WHERE cm.contrato_id = ? AND cm.tenant_id = ? AND cm.ativo = 1
+        ORDER BY cm.data_inclusao`,
+      [contratoId, tenantId],
+    );
+  }
+
+  /** Vincula uma maquina ao contrato. Idempotente: revincula se estava inativa. */
+  async vincularMaquina(tenantId: string, contratoId: string, maquinaId: string) {
+    await this.buscarContrato(tenantId, contratoId);
+
+    const [maquina] = await this.ds.query(
+      'SELECT id FROM maquina WHERE id = ? AND tenant_id = ? LIMIT 1',
+      [maquinaId, tenantId],
+    );
+    if (!maquina) throw new NotFoundException('Máquina não encontrada.');
+
+    // A mesma maquina nao pode estar em dois contratos ativos ao mesmo tempo
+    const [conflito] = await this.ds.query(
+      `SELECT cm.contrato_id
+         FROM contrato_maquinas cm
+         JOIN contrato co ON co.id = cm.contrato_id AND co.tenant_id = cm.tenant_id
+        WHERE cm.maquina_id  = ?
+          AND cm.tenant_id   = ?
+          AND cm.ativo       = 1
+          AND cm.contrato_id <> ?
+          AND co.situacao    = 'ativo'
+        LIMIT 1`,
+      [maquinaId, tenantId, contratoId],
+    );
+    if (conflito) {
+      throw new ConflictException(
+        'Esta máquina já está vinculada a outro contrato ativo. Desvincule-a antes.',
+      );
+    }
+
+    const existente = await this.contratoMaquinaRepo.findOne({
+      where: { contrato_id: contratoId, maquina_id: maquinaId, tenant_id: tenantId },
+    });
+
+    if (existente) {
+      existente.ativo = true;
+      await this.contratoMaquinaRepo.save(existente);
+    } else {
+      await this.contratoMaquinaRepo.save(this.contratoMaquinaRepo.create({
+        contrato_id:   contratoId,
+        maquina_id:    maquinaId,
+        tenant_id:     tenantId,
+        data_inclusao: new Date().toISOString().slice(0, 10),
+        ativo:         true,
+      }));
+    }
+
+    // Compatibilidade: contrato.maquina_id continua apontando para a maquina
+    // principal (a primeira vinculada), porque telas e relatorios ainda o leem.
+    const vinculadas = await this.listarMaquinasDoContrato(tenantId, contratoId);
+    await this.contratoRepo.update(
+      { id: contratoId, tenant_id: tenantId },
+      { maquina_id: vinculadas[0]?.maquina_id ?? null },
+    );
+
+    return this.listarMaquinasDoContrato(tenantId, contratoId);
+  }
+
+  /** Desvincula (ativo = false) — preserva o historico, nao deleta a linha. */
+  async desvincularMaquina(tenantId: string, contratoId: string, maquinaId: string) {
+    const vinculo = await this.contratoMaquinaRepo.findOne({
+      where: { contrato_id: contratoId, maquina_id: maquinaId, tenant_id: tenantId },
+    });
+    if (!vinculo) throw new NotFoundException('Vínculo não encontrado.');
+
+    vinculo.ativo = false;
+    await this.contratoMaquinaRepo.save(vinculo);
+
+    const restantes = await this.listarMaquinasDoContrato(tenantId, contratoId);
+    await this.contratoRepo.update(
+      { id: contratoId, tenant_id: tenantId },
+      { maquina_id: restantes[0]?.maquina_id ?? null },
+    );
+
+    return restantes;
   }
 
   // ══════════════════════════════════════════════════════════════

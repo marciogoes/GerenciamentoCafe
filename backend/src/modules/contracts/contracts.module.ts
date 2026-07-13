@@ -4,6 +4,7 @@ import { MailModule }     from '../mail/mail.module';
 
 import { Cliente }            from './entities/cliente.entity';
 import { Contrato }           from './entities/contrato.entity';
+import { ContratoMaquinas }   from './entities/contrato-maquinas.entity';
 import { LancamentoMensal }   from './entities/lancamento-mensal.entity';
 import { ReajusteContratual } from './entities/reajuste-contratual.entity';
 
@@ -21,6 +22,7 @@ import {
     TypeOrmModule.forFeature([
       Cliente,
       Contrato,
+      ContratoMaquinas,   // ERR-03: entity existia mas nunca foi registrada
       LancamentoMensal,
       ReajusteContratual,
     ]),

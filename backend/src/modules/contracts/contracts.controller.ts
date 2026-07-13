@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch,
+  Controller, Get, Post, Patch, Delete,
   Param, Body, Query, UseGuards, Res,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -15,7 +15,7 @@ import {
   CriarClienteDto, AtualizarClienteDto, FiltrosClienteDto,
   CriarContratoDto, AtualizarContratoDto, FiltrosContratoDto,
   GerarLancamentosDto, AtualizarLancamentoDto, RegistrarPagamentoDto, FiltrosLancamentoDto,
-  AplicarReajusteDto,
+  AplicarReajusteDto, VincularMaquinaDto,
 } from './dto/contracts.dto';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +97,37 @@ export class ContratosController {
     @Body() dto: AtualizarContratoDto,
   ) {
     return this.svc.atualizarContrato(tid, id, dto);
+  }
+
+  // ── Máquinas do contrato (ERR-03, relação N:N) ────────────────
+  @Get(':id/maquinas')
+  @ApiOperation({ summary: 'Máquinas vinculadas ao contrato (RF-C02)' })
+  @ApiParam({ name: 'id', description: 'UUID do contrato' })
+  listarMaquinas(@TenantId() tid: string, @Param('id') id: string) {
+    return this.svc.listarMaquinasDoContrato(tid, id);
+  }
+
+  @Post(':id/maquinas')
+  @Roles(PERFIS.ADMIN, PERFIS.FINANCEIRO)
+  @ApiOperation({ summary: 'Vincular máquina ao contrato' })
+  @ApiParam({ name: 'id', description: 'UUID do contrato' })
+  vincularMaquina(
+    @TenantId() tid: string,
+    @Param('id') id: string,
+    @Body() dto: VincularMaquinaDto,
+  ) {
+    return this.svc.vincularMaquina(tid, id, dto.maquina_id);
+  }
+
+  @Delete(':id/maquinas/:maquinaId')
+  @Roles(PERFIS.ADMIN, PERFIS.FINANCEIRO)
+  @ApiOperation({ summary: 'Desvincular máquina do contrato (preserva histórico)' })
+  desvincularMaquina(
+    @TenantId() tid: string,
+    @Param('id') id: string,
+    @Param('maquinaId') maquinaId: string,
+  ) {
+    return this.svc.desvincularMaquina(tid, id, maquinaId);
   }
 
   // ── Reajuste ──────────────────────────────────────────────────

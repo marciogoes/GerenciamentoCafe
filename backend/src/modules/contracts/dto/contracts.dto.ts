@@ -147,6 +147,13 @@ export class AtualizarContratoDto {
   observacao?: string;
 }
 
+// ERR-03: vinculo N:N entre contrato e maquina (RF-C02)
+export class VincularMaquinaDto {
+  @ApiProperty({ description: 'UUID da máquina a vincular ao contrato' })
+  @IsUUID()
+  maquina_id: string;
+}
+
 export class FiltrosContratoDto {
   @ApiPropertyOptional() @IsOptional() @IsString()
   situacao?: string;
