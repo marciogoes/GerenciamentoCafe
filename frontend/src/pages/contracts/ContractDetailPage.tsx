@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText, BarChart2, History, ChevronDown, ChevronUp, Printer } from 'lucide-react';
 import { useContrato, useAtualizarContrato, useAplicarReajuste } from '../../hooks/useContracts';
+import { MaquinasDoContrato } from '../../components/contracts/MaquinasDoContrato';
 import {
   TIPO_CONTRATO_LABEL, SITUACAO_CONTRATO_COLOR, SITUACAO_LANCAMENTO_COLOR, SITUACAO_LANCAMENTO_LABEL,
 } from '../../types';
@@ -176,6 +177,12 @@ export default function ContractDetailPage() {
           </form>
         )}
       </div>
+
+      {/* ERR-03: máquinas vinculadas (tabela N:N contrato_maquinas) */}
+      <MaquinasDoContrato
+        contratoId={contrato.id}
+        editavel={contrato.situacao !== 'encerrado'}
+      />
 
       {/* Abas */}
       <div className="border-b border-gray-200">

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { clientsApi, contractsApi, invoicesApi, getErrorMessage } from '../services/api';
 import type {
-  Cliente, Contrato, LancamentoMensal, ItemInadimplencia,
+  Cliente, Contrato, LancamentoMensal, ItemInadimplencia, MaquinaDoContrato,
 } from '../types';
 import toast from 'react-hot-toast';
 
@@ -121,6 +121,55 @@ export function useAplicarReajuste() {
         qc.invalidateQueries('contratos');
         qc.invalidateQueries(['contrato', id]);
         toast.success('Reajuste aplicado com sucesso!');
+      },
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
+    },
+  );
+}
+
+// ── Máquinas do contrato (ERR-03, relação N:N) ───────────────
+
+export function useMaquinasDoContrato(contratoId: string | undefined) {
+  return useQuery<MaquinaDoContrato[]>(
+    ['contrato-maquinas', contratoId],
+    async () => {
+      const { data } = await contractsApi.maquinas(contratoId!);
+      return data;
+    },
+    { enabled: !!contratoId, staleTime: 30_000 },
+  );
+}
+
+export function useVincularMaquina() {
+  const qc = useQueryClient();
+  return useMutation(
+    ({ id, maquina_id }: { id: string; maquina_id: string }) =>
+      contractsApi.vincular(id, maquina_id).then(r => r.data),
+    {
+      onSuccess: (_d, { id }) => {
+        qc.invalidateQueries(['contrato-maquinas', id]);
+        qc.invalidateQueries(['contrato', id]);
+        qc.invalidateQueries('contratos');
+        qc.invalidateQueries('maquinas');
+        toast.success('Máquina vinculada ao contrato.');
+      },
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
+    },
+  );
+}
+
+export function useDesvincularMaquina() {
+  const qc = useQueryClient();
+  return useMutation(
+    ({ id, maquinaId }: { id: string; maquinaId: string }) =>
+      contractsApi.desvincular(id, maquinaId).then(r => r.data),
+    {
+      onSuccess: (_d, { id }) => {
+        qc.invalidateQueries(['contrato-maquinas', id]);
+        qc.invalidateQueries(['contrato', id]);
+        qc.invalidateQueries('contratos');
+        qc.invalidateQueries('maquinas');
+        toast.success('Máquina desvinculada.');
       },
       onError: (e: any) => { toast.error(getErrorMessage(e)); },
     },

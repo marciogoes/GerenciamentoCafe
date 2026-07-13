@@ -151,6 +151,12 @@ export const contractsApi = {
   atualizar: (id: string, dto: any) => api.patch(`/contracts/${id}`, dto),
   reajustar: (id: string, dto: any) => api.post(`/contracts/${id}/reajuste`, dto),
   reajustes: (id: string) => api.get(`/contracts/${id}/reajustes`),
+  // ERR-03: vinculo N:N contrato <-> maquina
+  maquinas:    (id: string) => api.get(`/contracts/${id}/maquinas`),
+  vincular:    (id: string, maquina_id: string) =>
+    api.post(`/contracts/${id}/maquinas`, { maquina_id }),
+  desvincular: (id: string, maquinaId: string) =>
+    api.delete(`/contracts/${id}/maquinas/${maquinaId}`),
 };
 
 // ── Cobranças / Lançamentos (Sprint 6) ───────────────────────

@@ -301,8 +301,21 @@ export interface Contrato {
   observacao:          string | null;
   criado_em:           string;
   // Enriquecido:
+  maquinas?:           MaquinaDoContrato[];
   reajustes?:          ReajusteContratual[];
   lancamentos?:        LancamentoMensal[];
+}
+
+// ERR-03: maquinas vinculadas ao contrato (tabela N:N contrato_maquinas)
+export interface MaquinaDoContrato {
+  maquina_id:        string;
+  patrimonio:        string;
+  numero_serie:      string | null;
+  modelo_nome:       string | null;
+  situacao:          SituacaoMaquina;
+  localizacao_atual: string | null;
+  data_inclusao:     string;
+  ativo:             boolean;
 }
 
 // ── Lançamentos Mensais ───────────────────────────────────────
