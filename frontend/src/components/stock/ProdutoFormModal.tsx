@@ -51,6 +51,9 @@ export function ProdutoFormModal({ onClose, produto }: Props) {
       Object.entries(data).filter(([, v]) => v !== '' && v !== undefined),
     );
     if (isEdit) {
+      // codigo e imutavel: AtualizarProdutoDto nao o whitelista, e com
+      // forbidNonWhitelisted o PATCH quebra ("property codigo should not exist").
+      delete (dto as any).codigo;
       await atualizar.mutateAsync({ id: produto!.id, dto });
     } else {
       await criar.mutateAsync(dto);

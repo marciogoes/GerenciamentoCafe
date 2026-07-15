@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Pencil } from 'lucide-react';
 import { useMaquina } from '../../hooks/useMachines';
+import { MaquinaFormModal } from '../../components/machines/MaquinaFormModal';
 import { SITUACAO_LABEL, SITUACAO_COLOR } from '../../types';
 
 function formatDate(d: string | null) {
@@ -16,6 +18,7 @@ function formatCurrency(v: number | null) {
 export default function MachineDetailPage() {
   const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [showEdit, setShowEdit] = useState(false);
   const { data, isLoading, isError } = useMaquina(id ?? '');
 
   if (isLoading) return (
@@ -57,9 +60,17 @@ export default function MachineDetailPage() {
               <p className="text-gray-500 mt-1">{data.modelo_nome}</p>
             )}
           </div>
-          <span className={`text-sm font-semibold px-3 py-1 rounded-full ${badgeClass}`}>
-            {labelSit}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className={`text-sm font-semibold px-3 py-1 rounded-full ${badgeClass}`}>
+              {labelSit}
+            </span>
+            <button
+              onClick={() => setShowEdit(true)}
+              className="text-sm flex items-center gap-1 text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50"
+            >
+              <Pencil className="w-4 h-4" /> Editar
+            </button>
+          </div>
         </div>
 
         {data.localizacao_atual && (
@@ -181,6 +192,11 @@ export default function MachineDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de edição do cadastro da máquina */}
+      {showEdit && (
+        <MaquinaFormModal maquina={data} onClose={() => setShowEdit(false)} />
+      )}
     </div>
   );
 }

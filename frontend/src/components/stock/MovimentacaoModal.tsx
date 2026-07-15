@@ -32,7 +32,11 @@ interface Props {
 }
 
 export function MovimentacaoModal({ tipo, produtoIdInicial, onClose }: Props) {
-  const { data: produtos = [] } = useProdutos({ ativo: 'true' });
+  // 'ativo' nao existe em FiltrosProdutoDto; com forbidNonWhitelisted o GET
+  // quebrava com 400 e a lista voltava vazia. Buscamos sem filtro e filtramos
+  // os ativos aqui no cliente (o backend ja bloqueia movimentar produto inativo).
+  const { data: produtosRaw = [] } = useProdutos();
+  const produtos = produtosRaw.filter(p => p.ativo !== false);
   const registrarEntrada = useRegistrarEntrada();
   const registrarSaida   = useRegistrarSaida();
 

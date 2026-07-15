@@ -83,7 +83,7 @@ export default function ContratoFormModal({ contrato, clientes, clientePreSeleci
             {/* Tipo */}
             <div>
               <label className="form-label">Tipo *</label>
-              <select {...register('tipo')} className="input-field">
+              <select {...register('tipo')} className="input-field" disabled={!!contrato}>
                 <option value="locacao">Locação</option>
                 <option value="comodato">Comodato</option>
                 <option value="evento">Evento</option>
@@ -109,12 +109,12 @@ export default function ContratoFormModal({ contrato, clientes, clientePreSeleci
             {/* Datas */}
             <div>
               <label className="form-label">Data Assinatura *</label>
-              <input {...register('data_assinatura', { required: 'Obrigatório' })} type="date" className="input-field" />
+              <input {...register('data_assinatura', { required: 'Obrigatório' })} type="date" className="input-field" disabled={!!contrato} />
               {errors.data_assinatura && <p className="form-error">{String(errors.data_assinatura.message)}</p>}
             </div>
             <div>
               <label className="form-label">Início da Vigência *</label>
-              <input {...register('data_inicio', { required: 'Obrigatório' })} type="date" className="input-field" />
+              <input {...register('data_inicio', { required: 'Obrigatório' })} type="date" className="input-field" disabled={!!contrato} />
               {errors.data_inicio && <p className="form-error">{String(errors.data_inicio.message)}</p>}
             </div>
             <div>

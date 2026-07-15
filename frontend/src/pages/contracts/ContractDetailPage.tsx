@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, BarChart2, History, ChevronDown, ChevronUp, Printer } from 'lucide-react';
-import { useContrato, useAtualizarContrato, useAplicarReajuste } from '../../hooks/useContracts';
+import { ArrowLeft, FileText, BarChart2, History, ChevronDown, ChevronUp, Printer, Pencil } from 'lucide-react';
+import { useContrato, useAtualizarContrato, useAplicarReajuste, useClientes } from '../../hooks/useContracts';
 import { MaquinasDoContrato } from '../../components/contracts/MaquinasDoContrato';
+import ContratoFormModal from '../../components/contracts/ContratoFormModal';
 import {
   TIPO_CONTRATO_LABEL, SITUACAO_CONTRATO_COLOR, SITUACAO_LANCAMENTO_COLOR, SITUACAO_LANCAMENTO_LABEL,
 } from '../../types';
@@ -13,9 +14,11 @@ export default function ContractDetailPage() {
   const navigate = useNavigate();
   const [aba, setAba] = useState<'lancamentos' | 'reajustes'>('lancamentos');
   const [showReajusteForm, setShowReajusteForm] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [reajusteForm, setReajusteForm] = useState({ indice: 'IPCA', percentual: '', data_vigencia: '' });
 
   const { data: contrato, isLoading } = useContrato(id);
+  const { data: clientes = [] } = useClientes();
   const atualizar   = useAtualizarContrato();
   const aplicarReaj = useAplicarReajuste();
 
@@ -29,6 +32,23 @@ export default function ContractDetailPage() {
   function alterarSituacao(situacao: string) {
     if (!confirm(`Confirmar alteração da situação para "${situacao}"?`)) return;
     atualizar.mutate({ id: contrato!.id, dto: { situacao } });
+  }
+
+  function handleEditSave(data: any) {
+    // AtualizarContratoDto so aceita estes campos (cliente/tipo/assinatura/inicio
+    // sao fixos apos criar). Enviar outros quebra com forbidNonWhitelisted.
+    const dto: Record<string, any> = {
+      valor_mensal:    data.valor_mensal,
+      data_fim:        data.data_fim,
+      dia_vencimento:  data.dia_vencimento,
+      indice_reajuste: data.indice_reajuste,
+      observacao:      data.observacao,
+    };
+    Object.keys(dto).forEach(k => dto[k] === undefined && delete dto[k]);
+    atualizar.mutate(
+      { id: contrato!.id, dto },
+      { onSuccess: () => setShowEdit(false) },
+    );
   }
 
   function handleReajuste(e: React.FormEvent) {
@@ -93,6 +113,15 @@ export default function ContractDetailPage() {
 
         {/* Ações */}
         <div className="mt-4 flex gap-2 flex-wrap">
+          {contrato.situacao !== 'encerrado' && (
+            <button
+              onClick={() => setShowEdit(true)}
+              className="btn-ghost text-sm flex items-center gap-1 text-gray-700 border border-gray-300 hover:bg-gray-50"
+            >
+              <Pencil className="w-4 h-4" /> Editar
+            </button>
+          )}
+
           {/* Botão PDF — somente para contratos de evento */}
           {contrato.tipo === 'evento' && (
             <button
@@ -277,6 +306,17 @@ export default function ContractDetailPage() {
             ))
           )}
         </div>
+      )}
+
+      {/* Modal de edição do contrato */}
+      {showEdit && (
+        <ContratoFormModal
+          contrato={contrato}
+          clientes={clientes}
+          loading={atualizar.isLoading}
+          onClose={() => setShowEdit(false)}
+          onSave={handleEditSave}
+        />
       )}
     </div>
   );
