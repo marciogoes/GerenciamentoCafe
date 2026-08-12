@@ -29,10 +29,16 @@ export default function MachinesPage() {
   const foraDaBaseQ  = useMaquinasForaDaBase();
   const naBaseQ      = useMaquinasNaBase();
 
-  // Filtra por busca de patrimônio no frontend (rápido)
-  const maquinasFiltradas = (maquinasQ.data ?? []).filter(m =>
-    !busca || m.patrimonio.toLowerCase().includes(busca.toLowerCase()),
-  );
+  // Busca no frontend por patrimônio, cliente/local atual ou modelo (rápido)
+  const maquinasFiltradas = (maquinasQ.data ?? []).filter(m => {
+    if (!busca) return true;
+    const q = busca.toLowerCase();
+    return (
+      m.patrimonio.toLowerCase().includes(q) ||
+      (m.localizacao_atual ?? '').toLowerCase().includes(q) ||
+      (m.modelo_nome ?? '').toLowerCase().includes(q)
+    );
+  });
 
   const abas = [
     { id: 'frota',  label: 'Toda a Frota' },
@@ -99,10 +105,10 @@ export default function MachinesPage() {
         <div className="space-y-4">
           <input
             type="text"
-            placeholder="Buscar por patrimônio…"
+            placeholder="Buscar por patrimônio, cliente/local (ex.: SEFA, MPF) ou modelo…"
             value={busca}
             onChange={e => setBusca(e.target.value)}
-            className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full max-w-md border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
           {maquinasQ.isLoading && (

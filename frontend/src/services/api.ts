@@ -115,6 +115,7 @@ export const machinesApi = {
   buscar: (id: string) => api.get(`/machines/${id}`),
   criar: (dto: any) => api.post('/machines', dto),
   atualizar: (id: string, dto: any) => api.patch(`/machines/${id}`, dto),
+  excluir: (id: string) => api.delete(`/machines/${id}`),
   saida: (id: string, dto: any) => api.post(`/machines/${id}/departure`, dto),
   retorno: (movId: string, dto: any) => api.post(`/machines/movements/${movId}/return`, dto),
   historico: (id: string, params?: any) => api.get(`/machines/${id}/movements`, { params }),
@@ -156,6 +157,7 @@ export const contractsApi = {
   buscar: (id: string) => api.get(`/contracts/${id}`),
   criar: (dto: any) => api.post('/contracts', dto),
   atualizar: (id: string, dto: any) => api.patch(`/contracts/${id}`, dto),
+  excluir: (id: string) => api.delete(`/contracts/${id}`),
   reajustar: (id: string, dto: any) => api.post(`/contracts/${id}/reajuste`, dto),
   reajustes: (id: string) => api.get(`/contracts/${id}/reajustes`),
   // ERR-03: vinculo N:N contrato <-> maquina

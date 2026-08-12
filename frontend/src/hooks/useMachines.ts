@@ -155,6 +155,21 @@ export function useAtualizarMaquina() {
   );
 }
 
+export function useExcluirMaquina() {
+  const qc = useQueryClient();
+  return useMutation(
+    (id: string) => machinesApi.excluir(id).then(r => r.data),
+    {
+      onSuccess: (r: any) => {
+        qc.invalidateQueries('maquinas');
+        qc.invalidateQueries('resumo-frota');
+        toast.success(r?.mensagem ?? 'Máquina removida.');
+      },
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
+    },
+  );
+}
+
 export function useRegistrarSaida() {
   const qc = useQueryClient();
   return useMutation(
@@ -180,6 +195,7 @@ export function useRegistrarRetorno() {
       machinesApi.retorno(movId, dto).then(r => r.data),
     {
       onSuccess: () => {
+        qc.invalidateQueries('maquina');
         qc.invalidateQueries('maquinas');
         qc.invalidateQueries('resumo-frota');
         qc.invalidateQueries('maquinas-na-base');

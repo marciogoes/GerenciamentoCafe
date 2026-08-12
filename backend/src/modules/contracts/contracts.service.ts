@@ -237,6 +237,37 @@ export class ContractsService {
     return salvo;
   }
 
+  async excluirContrato(
+    tenantId: string, id: string,
+  ): Promise<{ acao: 'excluido' | 'encerrado'; mensagem: string }> {
+    await this.buscarContrato(tenantId, id);
+
+    // Se houver lançamentos pagos, preserva o histórico financeiro: encerra em vez de excluir
+    const pagos = await this.lancamentoRepo.count({
+      where: { contrato_id: id, tenant_id: tenantId, situacao: 'pago' as any },
+    });
+    if (pagos > 0) {
+      await this.contratoRepo.update({ id, tenant_id: tenantId }, { situacao: 'encerrado' as any });
+      return {
+        acao:     'encerrado',
+        mensagem: `Contrato encerrado em vez de excluído (possui ${pagos} lançamento(s) pago(s), preservados para histórico).`,
+      };
+    }
+
+    // Sem pagamentos: remove dependências e exclui em transação
+    await this.ds.transaction(async (m) => {
+      await m.query(
+        'UPDATE movimentacao_maquina SET contrato_id = NULL WHERE contrato_id = ? AND tenant_id = ?',
+        [id, tenantId],
+      );
+      await m.delete(ContratoMaquinas,   { contrato_id: id, tenant_id: tenantId });
+      await m.delete(LancamentoMensal,   { contrato_id: id, tenant_id: tenantId });
+      await m.delete(ReajusteContratual, { contrato_id: id, tenant_id: tenantId });
+      await m.delete(Contrato,           { id, tenant_id: tenantId });
+    });
+    return { acao: 'excluido', mensagem: 'Contrato excluído com sucesso.' };
+  }
+
   // ══════════════════════════════════════════════════════════════
   //  MAQUINAS DO CONTRATO — ERR-03 (RF-C02, relacao N:N)
   // ══════════════════════════════════════════════════════════════

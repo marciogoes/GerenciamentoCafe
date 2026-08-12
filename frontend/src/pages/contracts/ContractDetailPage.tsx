@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, BarChart2, History, ChevronDown, ChevronUp, Printer, Pencil } from 'lucide-react';
-import { useContrato, useAtualizarContrato, useAplicarReajuste, useClientes } from '../../hooks/useContracts';
+import { ArrowLeft, FileText, BarChart2, History, ChevronDown, ChevronUp, Printer, Pencil, Trash2 } from 'lucide-react';
+import { useContrato, useAtualizarContrato, useAplicarReajuste, useClientes, useExcluirContrato } from '../../hooks/useContracts';
 import { MaquinasDoContrato } from '../../components/contracts/MaquinasDoContrato';
 import ContratoFormModal from '../../components/contracts/ContratoFormModal';
 import {
@@ -21,6 +21,13 @@ export default function ContractDetailPage() {
   const { data: clientes = [] } = useClientes();
   const atualizar   = useAtualizarContrato();
   const aplicarReaj = useAplicarReajuste();
+  const excluir     = useExcluirContrato();
+
+  function handleExcluir() {
+    if (!contrato) return;
+    if (!confirm('Excluir este contrato? Se houver pagamentos registrados, ele será apenas encerrado (histórico preservado).')) return;
+    excluir.mutate(contrato.id, { onSuccess: () => navigate('/contracts') });
+  }
 
   if (isLoading) return (
     <div className="card p-10 text-center">
@@ -121,6 +128,13 @@ export default function ContractDetailPage() {
               <Pencil className="w-4 h-4" /> Editar
             </button>
           )}
+          <button
+            onClick={handleExcluir}
+            disabled={excluir.isLoading}
+            className="btn-ghost text-sm flex items-center gap-1 text-red-600 border border-red-200 hover:bg-red-50 disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" /> Excluir
+          </button>
 
           {/* Botão PDF — somente para contratos de evento */}
           {contrato.tipo === 'evento' && (

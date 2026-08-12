@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
-import { useMaquina } from '../../hooks/useMachines';
+import { Pencil, Trash2, RotateCcw } from 'lucide-react';
+import { useMaquina, useExcluirMaquina } from '../../hooks/useMachines';
 import { MaquinaFormModal } from '../../components/machines/MaquinaFormModal';
+import { RegistrarRetornoModal } from '../../components/machines/RegistrarRetornoModal';
+import type { MaquinaForaDaBase } from '../../types';
 import { SITUACAO_LABEL, SITUACAO_COLOR } from '../../types';
 
 function formatDate(d: string | null) {
@@ -19,7 +21,15 @@ export default function MachineDetailPage() {
   const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showEdit, setShowEdit] = useState(false);
+  const [showRetorno, setShowRetorno] = useState(false);
+  const excluir = useExcluirMaquina();
   const { data, isLoading, isError } = useMaquina(id ?? '');
+
+  function handleExcluir() {
+    if (!data) return;
+    if (!confirm(`Excluir a máquina ${data.patrimonio}? Se houver histórico, ela será apenas desativada.`)) return;
+    excluir.mutate(data.id, { onSuccess: () => navigate('/machines') });
+  }
 
   if (isLoading) return (
     <div className="flex items-center justify-center min-h-[60vh] text-gray-400">
@@ -69,6 +79,13 @@ export default function MachineDetailPage() {
               className="text-sm flex items-center gap-1 text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50"
             >
               <Pencil className="w-4 h-4" /> Editar
+            </button>
+            <button
+              onClick={handleExcluir}
+              disabled={excluir.isLoading}
+              className="text-sm flex items-center gap-1 text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" /> Excluir
             </button>
           </div>
         </div>
@@ -130,7 +147,15 @@ export default function MachineDetailPage() {
       {/* Movimentação atual */}
       {data.movimentacao_aberta && (
         <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
-          <h2 className="text-base font-semibold text-orange-700 mb-3">⚠️ Saída em Aberto</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-orange-700">⚠️ Saída em Aberto</h2>
+            <button
+              onClick={() => setShowRetorno(true)}
+              className="text-sm flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-1.5"
+            >
+              <RotateCcw className="w-4 h-4" /> Registrar retorno
+            </button>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
             <div>
               <p className="text-xs text-gray-400">Data de saída</p>
@@ -196,6 +221,28 @@ export default function MachineDetailPage() {
       {/* Modal de edição do cadastro da máquina */}
       {showEdit && (
         <MaquinaFormModal maquina={data} onClose={() => setShowEdit(false)} />
+      )}
+
+      {/* Modal de registro de retorno (a partir da ficha) */}
+      {showRetorno && data.movimentacao_aberta && (
+        <RegistrarRetornoModal
+          movimentacao={{
+            movimentacao_id: data.movimentacao_aberta.id,
+            maquina_id:      data.id,
+            patrimonio:      data.patrimonio,
+            situacao:        data.situacao,
+            localizacao:     data.movimentacao_aberta.local,
+            cliente_id:      data.movimentacao_aberta.cliente_id,
+            data_saida:      data.movimentacao_aberta.data_saida,
+            contrato_id:     data.movimentacao_aberta.contrato_id,
+            os_referencia:   data.movimentacao_aberta.os_referencia,
+            dias_fora:       Math.round(
+              (Date.now() - new Date(data.movimentacao_aberta.data_saida).getTime()) / 86400000,
+            ),
+            alerta:          false,
+          } as MaquinaForaDaBase}
+          onClose={() => setShowRetorno(false)}
+        />
       )}
     </div>
   );

@@ -209,6 +209,37 @@ export class MachinesService {
     return this.maquinaRepo.save(maquina);
   }
 
+  async excluirMaquina(
+    tenantId: string, id: string,
+  ): Promise<{ acao: 'excluido' | 'desativado'; mensagem: string }> {
+    await this.buscarMaquina(tenantId, id);
+
+    // Não permitir excluir máquina fora da base (saída em aberto)
+    const aberta = await this.movRepo.count({
+      where: { maquina_id: id, tenant_id: tenantId, data_retorno: IsNull() },
+    });
+    if (aberta > 0) {
+      throw new BadRequestException(
+        'Máquina está fora da base (saída em aberto). Registre o retorno antes de excluir.',
+      );
+    }
+
+    // Se houver histórico de movimentações, desativa (preserva histórico) em vez de excluir
+    const historico = await this.movRepo.count({
+      where: { maquina_id: id, tenant_id: tenantId },
+    });
+    if (historico > 0) {
+      await this.maquinaRepo.update({ id, tenant_id: tenantId }, { situacao: 'desativada' as any });
+      return {
+        acao:     'desativado',
+        mensagem: `Máquina desativada (possui ${historico} movimentação(ões) no histórico, preservadas).`,
+      };
+    }
+
+    await this.maquinaRepo.delete({ id, tenant_id: tenantId });
+    return { acao: 'excluido', mensagem: 'Máquina excluída com sucesso.' };
+  }
+
   // ══════════════════════════════════════════════════════════════
   //  MOVIMENTAÇÕES — SAÍDA (RN-M01 a RN-M05)
   // ══════════════════════════════════════════════════════════════

@@ -152,6 +152,14 @@ export class MachinesController {
     return this.svc.atualizarMaquina(tenantId, id, dto);
   }
 
+  @Delete(':id')
+  @Roles(PERFIS.ADMIN)
+  @ApiOperation({ summary: 'Excluir máquina (desativa se houver histórico de movimentações)' })
+  @ApiParam({ name: 'id', description: 'UUID da máquina' })
+  excluir(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.svc.excluirMaquina(tenantId, id);
+  }
+
   // ── Saída ─────────────────────────────────────────────────────
 
   @Post(':id/departure')

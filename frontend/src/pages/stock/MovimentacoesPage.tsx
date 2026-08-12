@@ -4,6 +4,7 @@ import { useProdutos }      from '../../hooks/useStock';
 import { ArrowLeft, ArrowDownCircle, ArrowUpCircle, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { CategoriaProduto } from '../../types';
+import { fmtDate } from '../../utils/format';
 
 function TipoBadge({ tipo }: { tipo: 'entrada' | 'saida' }) {
   return tipo === 'entrada'
@@ -25,9 +26,15 @@ export function MovimentacoesPage() {
     data_inicio: primeiroDia,
     data_fim:    ultimoDia,
   });
+  const [buscaOrigem, setBuscaOrigem] = useState('');
 
   const { data: produtos = [] } = useProdutos();
-  const { data: movs = [], isLoading } = useMovimentacoes(filtros);
+  const { data: movsRaw = [], isLoading } = useMovimentacoes(filtros);
+
+  // Filtro Origem/Destino no frontend (o campo é texto livre)
+  const movs = buscaOrigem
+    ? movsRaw.filter(m => (m.origem ?? '').toLowerCase().includes(buscaOrigem.toLowerCase()))
+    : movsRaw;
 
   const totalEntradas = movs.filter(m => m.tipo === 'entrada').reduce((s, m) => s + m.quantidade, 0);
   const totalSaidas   = movs.filter(m => m.tipo === 'saida').reduce((s, m) => s + m.quantidade, 0);
@@ -85,6 +92,16 @@ export function MovimentacoesPage() {
           </select>
         </div>
         <div>
+          <label className="block text-xs text-gray-500 mb-1">Origem / Destino</label>
+          <input
+            type="text"
+            value={buscaOrigem}
+            onChange={e => setBuscaOrigem(e.target.value)}
+            placeholder="Ex.: SEFA, SERPRO…"
+            className="text-sm border rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+        <div>
           <label className="block text-xs text-gray-500 mb-1">De</label>
           <input type="date" defaultValue={primeiroDia}
             onChange={e => atualizar('data_inicio', e.target.value)}
@@ -123,7 +140,7 @@ export function MovimentacoesPage() {
                 {movs.map(m => (
                   <tr key={m.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                      {new Date(m.data + 'T12:00:00').toLocaleDateString('pt-BR')}
+                      {fmtDate(m.data)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-800">{m.produto_desc}</div>

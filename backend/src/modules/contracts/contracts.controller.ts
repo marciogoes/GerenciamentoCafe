@@ -99,6 +99,14 @@ export class ContratosController {
     return this.svc.atualizarContrato(tid, id, dto);
   }
 
+  @Delete(':id')
+  @Roles(PERFIS.ADMIN)
+  @ApiOperation({ summary: 'Excluir contrato (encerra se houver lançamento pago)' })
+  @ApiParam({ name: 'id', description: 'UUID do contrato' })
+  excluir(@TenantId() tid: string, @Param('id') id: string) {
+    return this.svc.excluirContrato(tid, id);
+  }
+
   // ── Máquinas do contrato (ERR-03, relação N:N) ────────────────
   @Get(':id/maquinas')
   @ApiOperation({ summary: 'Máquinas vinculadas ao contrato (RF-C02)' })

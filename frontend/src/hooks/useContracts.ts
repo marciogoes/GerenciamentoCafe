@@ -112,6 +112,21 @@ export function useAtualizarContrato() {
   );
 }
 
+export function useExcluirContrato() {
+  const qc = useQueryClient();
+  return useMutation(
+    (id: string) => contractsApi.excluir(id).then(r => r.data),
+    {
+      onSuccess: (r: any) => {
+        qc.invalidateQueries('contratos');
+        qc.invalidateQueries('clientes');
+        toast.success(r?.mensagem ?? 'Contrato removido.');
+      },
+      onError: (e: any) => { toast.error(getErrorMessage(e)); },
+    },
+  );
+}
+
 export function useAplicarReajuste() {
   const qc = useQueryClient();
   return useMutation(
